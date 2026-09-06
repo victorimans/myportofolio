@@ -12,6 +12,19 @@
     --line: #e3d9c9;
     --text-muted: #6b6459;
     --radius: 4px;
+
+    --cream: #f6efe1;
+    --cream-deep: #eee2cf;
+    --paper: rgba(255, 251, 244, .82);
+    --paper-strong: #fffaf2;
+    --ink: #352d32;
+    --muted: #756b70;
+    --purple: #7d5aa6;
+    --purple-soft: #a98cc6;
+    --pink: #d88ba9;
+    --pink-soft: #edb8cc;
+    --brown: #71544c;
+    --line: rgba(82, 60, 76, .12);
 }
 
 body {
@@ -177,6 +190,22 @@ h1, .brand {
     border-top: 1px solid var(--line);
 }
 
+.sakura-petal {
+    position: fixed;
+
+    top: -10vh;
+
+    z-index: 999;
+
+    pointer-events: none;
+
+    color: rgba(213, 112, 152, 0.72);
+
+    animation-name: sakuraFall;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
 @media (max-width: 600px) {
     .hero-grid {
         grid-template-columns: 1fr;
@@ -192,5 +221,27 @@ h1, .brand {
 
     .social-links {
         justify-content: flex-start;
+    }
+}
+
+@keyframes sakuraFall {
+    0% {
+        transform:
+            translate3d(0, -12vh, 0)
+            rotate(0deg);
+
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 0.8;
+    }
+
+    100% {
+        transform:
+            translate3d(130px, 115vh, 0)
+            rotate(540deg);
+
+        opacity: 0;
     }
 }
