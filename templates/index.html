@@ -25,20 +25,31 @@
     <div id="sakura-layer" aria-hidden="true"></div>
 
     <header class="site-header">
-        <div class="container">
-            <a href="#profile" class="brand">Victoriano Iman Santosa</a>
-            <nav>
-                <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
-                <li class="nav-item"><a class="nav-link" href="#skills">Skills</a></li>
-                <li class="nav-item"><a class="nav-link" href="#projects">Projects</a></li>
-                <li class="nav-item"><a class="nav-link" href="#journey">Journey</a></li>
-                <li class="nav-item"><a class="nav-link contact-nav" href="#contact">Contact</a></li>
-            </nav>
-        </div>
+        <nav class="navbar navbar-expand-lg fixed-top cream-nav">
+            <div class="container">
+                <a class="navbar-brand brand" href="#home">
+                    <span>Victoriano Iman Santosa</span>
+                </a>
+
+                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+
+                <div class="collapse navbar-collapse" id="navbarContent">
+                    <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+                    <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#skills">Skills</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#projects">Projects</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#journey">Journey</a></li>
+                    <li class="nav-item"><a class="nav-link contact-nav" href="#contact">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
     </header>
 
     <main>
-        <section class="hero" id="profile">
+        <section id="profile" class = "About">
             <div class="container hero-grid">
                 <div class="hero-identity">
                     <p class="hero-kicker">Computer Science &middot; Universitas Indonesia</p>
@@ -68,8 +79,13 @@
                 </div>
             </div>
         </section>
-
-        <section class="">
+        <section id="about">
+        </section>
+        <section id="skills">
+        </section>
+        <section id="projects">
+        </section>
+        <section id="journey">
         </section>
 
     </main>

@@ -1,194 +1,468 @@
+/* =========================================
+   RESET
+========================================= */
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-:root {
-    --ink: #1c1917;
-    --paper: #faf6f0;
-    --accent: #d95d39;
-    --accent-dark: #a8442a;
-    --line: #e3d9c9;
-    --text-muted: #6b6459;
-    --radius: 4px;
 
+/* =========================================
+   VARIABLES
+========================================= */
+
+:root {
     --cream: #f6efe1;
     --cream-deep: #eee2cf;
-    --paper: rgba(255, 251, 244, .82);
-    --paper-strong: #fffaf2;
+    --paper: #fffaf2;
+
     --ink: #352d32;
     --muted: #756b70;
+
     --purple: #7d5aa6;
     --purple-soft: #a98cc6;
+
     --pink: #d88ba9;
     --pink-soft: #edb8cc;
+
     --brown: #71544c;
-    --line: rgba(82, 60, 76, .12);
+
+    --accent: #d95d39;
+    --accent-dark: #a8442a;
+
+    --line: rgba(82, 60, 76, 0.12);
+
+    --radius: 4px;
+}
+
+
+/* =========================================
+   GLOBAL
+========================================= */
+
+html {
+    scroll-behavior: smooth;
+
+    /* supaya saat klik #about dll,
+       section tidak tertutup navbar */
+    scroll-padding-top: 90px;
 }
 
 body {
-    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+
+    /* navbar fixed tingginya sekitar 76px */
+    padding-top: 76px;
+
+    font-family: "Space Grotesk", sans-serif;
+
     color: var(--ink);
-    background-color: var(--paper);
-    line-height: 1.6;
+
+    background:
+        radial-gradient(
+            circle at 10% 15%,
+            rgba(216, 139, 169, 0.12),
+            transparent 22%
+        ),
+        radial-gradient(
+            circle at 88% 22%,
+            rgba(125, 90, 166, 0.09),
+            transparent 24%
+        ),
+        linear-gradient(
+            180deg,
+            #f9f3e8 0%,
+            var(--cream) 45%,
+            #f3eadb 100%
+        );
+
+    overflow-x: hidden;
 }
 
-h1, .brand {
-    font-family: "Space Grotesk", -apple-system, sans-serif;
+a {
+    text-decoration: none;
 }
+
+
+/* =========================================
+   CONTAINER
+========================================= */
 
 .container {
     max-width: 960px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
 }
+
+
+/* =========================================
+   HEADER / NAVBAR
+========================================= */
 
 .site-header {
-    border-bottom: 1px solid var(--line);
+    width: 100%;
 }
 
-.site-header .container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.25rem 1.5rem;
+
+/* Navbar background */
+
+.cream-nav {
+    background: rgba(249, 243, 232, 0.90);
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border-bottom: 1px solid var(--line);
+
+    transition: background 0.3s ease,
+                box-shadow 0.3s ease;
 }
+
+
+/* Navbar setelah scroll
+   class .scrolled bisa ditambahkan oleh JS */
+
+.cream-nav.scrolled {
+    background: rgba(249, 243, 232, 0.98);
+
+    box-shadow:
+        0 10px 30px
+        rgba(95, 74, 81, 0.08);
+}
+
+
+/* tinggi navbar */
+
+.navbar {
+    min-height: 76px;
+}
+
+
+/* Brand / nama */
 
 .brand {
-    font-size: 1.3rem;
+    color: var(--ink);
+
+    font-family: "Space Grotesk", sans-serif;
+
+    font-size: 1.15rem;
     font-weight: 700;
+
+    letter-spacing: 0.03em;
+}
+
+
+/* link navbar */
+
+.nav-link {
+    color: #554b50;
+
+    font-size: 0.92rem;
+
+    padding: 8px 13px !important;
+
+    transition: color 0.2s ease;
+}
+
+.nav-link:hover {
+    color: var(--brown);
+}
+
+
+/* tombol contact */
+
+.contact-nav {
+    border:
+        1px solid
+        rgba(125, 90, 166, 0.22);
+
+    border-radius: 999px;
+}
+
+
+/* hamburger button */
+
+.navbar-toggler {
     color: var(--ink);
-    text-decoration: none;
 }
 
-.site-header nav {
-    display: flex;
-    gap: 2rem;
+.navbar-toggler:focus {
+    box-shadow: none;
 }
 
-.site-header nav a {
-    color: var(--ink);
-    text-decoration: none;
-    font-size: 0.95rem;
+
+/* =========================================
+   PROFILE / ABOUT SECTION
+========================================= */
+
+/*
+HTML kamu menggunakan:
+
+<section class="about" id="profile">
+
+jadi gunakan .about,
+bukan .hero
+*/
+
+.about {
+    position: relative;
+
+    padding:
+        5rem
+        0
+        6rem;
 }
 
-.hero {
-    padding: 4.5rem 0 5rem;
-}
+
+/* layout utama */
 
 .hero-grid {
     display: grid;
-    grid-template-columns: 1.3fr 1fr;
+
+    grid-template-columns:
+        1.3fr
+        1fr;
+
     grid-template-areas:
         "identity photo"
-        "details  photo";
-    gap: 1.5rem 3rem;
+        "details photo";
+
+    gap:
+        1.5rem
+        3rem;
+
+    align-items: center;
 }
+
+
+/* =========================================
+   IDENTITY
+========================================= */
 
 .hero-identity {
     grid-area: identity;
 }
 
+.hero-kicker {
+    margin-bottom: 0.75rem;
+
+    font-size: 0.85rem;
+    font-weight: 700;
+
+    letter-spacing: 0.08em;
+
+    text-transform: uppercase;
+
+    color: var(--brown);
+}
+
+.hero-identity h1 {
+    font-family:
+        "Space Grotesk",
+        sans-serif;
+
+    font-size:
+        clamp(
+            3rem,
+            7vw,
+            5rem
+        );
+
+    font-weight: 700;
+
+    line-height: 0.95;
+
+    color: var(--ink);
+}
+
+
+/* =========================================
+   DETAILS
+========================================= */
+
 .hero-details {
     grid-area: details;
 }
 
-.hero-kicker {
-    font-size: 0.85rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--accent-dark);
-    font-weight: 700;
-    margin-bottom: 0.75rem;
-}
-
-.hero-identity h1 {
-    font-size: clamp(3rem, 7vw, 5rem);
-    line-height: 0.95;
-}
-
 .bio {
-    color: var(--text-muted);
     max-width: 480px;
+
     margin-bottom: 1.5rem;
+
+    color: var(--muted);
+
+    line-height: 1.7;
 }
+
+
+/* NPM / Program */
 
 .meta-list {
     display: flex;
+
     gap: 2rem;
+
     margin-bottom: 1.5rem;
 }
 
 .meta-row dt {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-muted);
     margin-bottom: 0.15rem;
+
+    color: var(--muted);
+
+    font-size: 0.75rem;
+
+    letter-spacing: 0.06em;
+
+    text-transform: uppercase;
 }
 
 .meta-row dd {
+    margin-bottom: 0;
+
     font-weight: 600;
+
+    color: var(--ink);
 }
+
+
+/* =========================================
+   SOCIAL LINKS
+========================================= */
 
 .social-links {
     display: flex;
-    gap: 0.5rem;
+
     flex-wrap: wrap;
+
+    gap: 0.6rem;
 }
 
 .social-link {
     display: inline-block;
+
+    padding:
+        0.55rem
+        1.1rem;
+
+    border-radius: var(--radius);
+
+    background: var(--ink);
+
+    color: var(--paper);
+
     font-size: 0.85rem;
     font-weight: 600;
-    text-decoration: none;
-    color: var(--paper);
-    background-color: var(--ink);
-    border-radius: var(--radius);
-    padding: 0.5rem 1.1rem;
-    transition: background-color 0.2s ease;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
 }
 
 .social-link:hover {
-    background-color: var(--accent);
+    background: var(--brown);
+
+    color: white;
+
+    transform:
+        translateY(-2px);
 }
+
+
+/* =========================================
+   PROFILE IMAGE
+========================================= */
 
 .hero-photo {
     grid-area: photo;
+
     align-self: center;
+
     position: relative;
 }
+
+
+/* background block belakang foto */
 
 .photo-block {
     position: absolute;
+
     top: 1.25rem;
     left: 1.25rem;
+
     width: 100%;
     height: 100%;
-    background-color: var(--accent);
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--brown),
+            var(--pink)
+        );
+
     border-radius: var(--radius);
+
     z-index: 0;
 }
 
+
+/* foto */
+
 .avatar {
     position: relative;
+
     z-index: 1;
+
     display: block;
+
     width: 100%;
+
     aspect-ratio: 1 / 1;
+
     object-fit: cover;
+
     border-radius: var(--radius);
-    border: 3px solid var(--ink);
+
+    border:
+        3px solid
+        var(--ink);
 }
 
+
+/* =========================================
+   FOOTER
+========================================= */
 
 .site-footer {
-    padding: 1.5rem;
-    color: var(--text-muted);
+    padding:
+        1.5rem
+        0;
+
+    border-top:
+        1px solid
+        var(--line);
+
+    color: var(--muted);
+
     font-size: 0.85rem;
-    border-top: 1px solid var(--line);
+
+    background:
+        rgba(
+            245,
+            237,
+            224,
+            0.72
+        );
 }
+
+.site-footer p {
+    margin: 0;
+}
+
+
+/* =========================================
+   SAKURA
+========================================= */
 
 .sakura-petal {
     position: fixed;
@@ -199,35 +473,34 @@ h1, .brand {
 
     pointer-events: none;
 
-    color: rgba(213, 112, 152, 0.72);
+    color:
+        rgba(
+            213,
+            112,
+            152,
+            0.72
+        );
 
-    animation-name: sakuraFall;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
+    animation-name:
+        sakuraFall;
+
+    animation-timing-function:
+        linear;
+
+    animation-iteration-count:
+        infinite;
 }
 
-@media (max-width: 600px) {
-    .hero-grid {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-            "identity"
-            "photo"
-            "details";
-    }
-
-    .hero-photo {
-        max-width: 220px;
-    }
-
-    .social-links {
-        justify-content: flex-start;
-    }
-}
 
 @keyframes sakuraFall {
+
     0% {
         transform:
-            translate3d(0, -12vh, 0)
+            translate3d(
+                0,
+                -12vh,
+                0
+            )
             rotate(0deg);
 
         opacity: 0;
@@ -239,9 +512,91 @@ h1, .brand {
 
     100% {
         transform:
-            translate3d(130px, 115vh, 0)
+            translate3d(
+                130px,
+                115vh,
+                0
+            )
             rotate(540deg);
 
         opacity: 0;
+    }
+}
+
+
+/* =========================================
+   TABLET / MOBILE NAVBAR
+========================================= */
+
+@media (max-width: 991px) {
+
+    .navbar-collapse {
+        padding:
+            1rem
+            0;
+    }
+
+    .navbar-nav {
+        gap: 0.3rem;
+    }
+
+    .contact-nav {
+        display: inline-block;
+
+        margin-top: 0.25rem;
+    }
+}
+
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 600px) {
+
+    body {
+        padding-top: 76px;
+    }
+
+    .about {
+        padding:
+            3.5rem
+            0
+            4rem;
+    }
+
+    .hero-grid {
+        grid-template-columns: 1fr;
+
+        grid-template-areas:
+            "identity"
+            "photo"
+            "details";
+
+        gap: 2rem;
+    }
+
+    .hero-identity h1 {
+        font-size:
+            clamp(
+                2.6rem,
+                13vw,
+                4rem
+            );
+    }
+
+    .hero-photo {
+        max-width: 240px;
+    }
+
+    .meta-list {
+        flex-direction: column;
+
+        gap: 0.8rem;
+    }
+
+    .social-links {
+        justify-content:
+            flex-start;
     }
 }
