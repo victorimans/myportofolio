@@ -623,6 +623,79 @@ main {
 
 
 /* =========================================
+   CONTACT
+========================================= */
+
+.contact-section {
+    border-bottom: 1px solid var(--line);
+}
+
+.contact-panel {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 3.5rem);
+    border: 1px solid rgba(125, 90, 166, 0.24);
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(169, 140, 198, 0.18), rgba(237, 184, 204, 0.22));
+    text-align: center;
+}
+
+.contact-panel h2 {
+    margin-bottom: 1rem;
+    color: var(--ink);
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.contact-invitation {
+    max-width: 34rem;
+    margin: 0 auto 1.75rem;
+    color: var(--muted);
+    line-height: 1.75;
+}
+
+.contact-email {
+    display: inline-grid;
+    gap: 0.25rem;
+    padding: 0.8rem 1.25rem;
+    border-radius: var(--radius);
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 700;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.contact-email span:last-child {
+    font-size: 0.85rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.contact-email:hover {
+    background: var(--brown);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.contact-links {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+.contact-links a {
+    color: var(--brown);
+    font-weight: 700;
+}
+
+.contact-links a:hover {
+    color: var(--accent-dark);
+}
+
+
+/* =========================================
    FOOTER
 ========================================= */
 
