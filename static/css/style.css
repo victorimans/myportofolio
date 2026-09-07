@@ -434,6 +434,101 @@ main {
 
 
 /* =========================================
+   CONTENT SECTIONS
+========================================= */
+
+.content-section {
+    padding: 6rem 0;
+    scroll-margin-top: 90px;
+}
+
+.about-section {
+    background: rgba(255, 250, 242, 0.5);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+}
+
+.section-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(16rem, 0.85fr);
+    gap: 3rem;
+    align-items: start;
+}
+
+.section-label {
+    margin-bottom: 0.75rem;
+    color: var(--brown);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.section-copy h2,
+.focus-panel h3 {
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.section-copy h2 {
+    max-width: 36rem;
+    margin-bottom: 1.5rem;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.05;
+}
+
+.section-copy {
+    align-self: center;
+}
+
+.section-copy p:not(.section-label) {
+    max-width: 30rem;
+    margin-bottom: 1.25rem;
+    color: var(--muted);
+    line-height: 1.75;
+    text-align: justify;
+}
+
+.section-copy p:last-child {
+    margin-bottom: 0;
+}
+
+.focus-panel {
+    padding: 1.75rem;
+    border: 1px solid rgba(125, 90, 166, 0.24);
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(169, 140, 198, 0.18), rgba(237, 184, 204, 0.22));
+}
+
+.focus-panel h3 {
+    margin-bottom: 1.25rem;
+    font-size: 1.35rem;
+}
+
+.focus-panel ul {
+    display: grid;
+    gap: 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.focus-panel li {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.focus-panel strong {
+    color: var(--brown);
+}
+
+.focus-panel span {
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+
+/* =========================================
    FOOTER
 ========================================= */
 
@@ -607,6 +702,15 @@ main {
 
     .profile-photo {
         max-width: 240px;
+    }
+
+    .content-section {
+        padding: 4rem 0;
+    }
+
+    .section-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
     }
 
     .meta-list {
