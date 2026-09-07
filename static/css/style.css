@@ -527,6 +527,60 @@ main {
     line-height: 1.55;
 }
 
+.skills-section {
+    background: rgba(255, 250, 242, 0.5);
+    border-bottom: 1px solid var(--line);
+}
+
+.skills-heading {
+    max-width: 36rem;
+    margin-bottom: 2.5rem;
+    color: var(--ink);
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.skills-panel {
+    padding: 1.75rem;
+    border: 1px solid rgba(125, 90, 166, 0.24);
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(169, 140, 198, 0.18), rgba(237, 184, 204, 0.22));
+}
+
+.skills-panel h3 {
+    margin-bottom: 0.75rem;
+    color: var(--ink);
+    font-size: 1.35rem;
+    font-weight: 700;
+}
+
+.skills-panel > p {
+    margin-bottom: 1.5rem;
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+.skills-panel ul {
+    display: grid;
+    gap: 1.25rem;
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.skills-panel li {
+    padding-left: 0.25rem;
+}
+
+.skills-panel strong {
+    color: var(--brown);
+}
+
+.skills-panel span {
+    color: var(--muted);
+    line-height: 1.55;
+}
+
 
 /* =========================================
    FOOTER
