@@ -39,3 +39,5 @@ _Avoid_: Fake records, inactive interactions
 **Static portfolio content**:
 The fixed personal, academic, skills, project, journey, and contact information presented as part of the portfolio.
 _Avoid_: Database content, dynamic portfolio records
+
+
