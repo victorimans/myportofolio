@@ -20,4 +20,35 @@ if (sakuraLayer && !reduceMotion) {
   }
 }
 
+const copyEmailButton = document.querySelector("[data-copy-email]");
+
+if (copyEmailButton) {
+  copyEmailButton.addEventListener("click", async () => {
+    const email = copyEmailButton.dataset.copyEmail;
+    const status = document.querySelector(".copy-status");
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(email);
+      } else {
+        const input = document.createElement("textarea");
+        input.value = email;
+        document.body.append(input);
+        input.select();
+        const copied = document.execCommand("copy");
+        input.remove();
+        if (!copied) throw new Error("Copy failed");
+      }
+      copyEmailButton.textContent = "Copied";
+      status.textContent = "Email address copied to clipboard.";
+      window.setTimeout(() => {
+        copyEmailButton.textContent = "Copy email";
+        status.textContent = "";
+      }, 2000);
+    } catch {
+      status.textContent = "Unable to copy. Please select the email address above.";
+    }
+  });
+}
+
 
