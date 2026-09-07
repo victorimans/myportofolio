@@ -27,11 +27,18 @@
     <header class="site-header">
         <nav class="navbar navbar-expand-lg fixed-top cream-nav">
             <div class="container">
-                <a class="navbar-brand brand" href="#home">
+                <a class="navbar-brand brand" href="#profile">
                     <span>Victoriano Iman Santosa</span>
                 </a>
 
-                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+               <button
+                    class="navbar-toggler border-0"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#navbarContent"
+                    aria-controls="navbarContent"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation">
                     <i class="fa-solid fa-bars"></i>
                 </button>
 
@@ -49,17 +56,17 @@
     </header>
 
     <main>
-        <section id="profile" class = "About">
-            <div class="container hero-grid">
-                <div class="hero-identity">
-                    <p class="hero-kicker">Computer Science &middot; Universitas Indonesia</p>
+        <section id="profile" class="profile-section">
+            <div class="container profile-grid">
+                <div class="profile-identity">
+                    <p class="profile-kicker">Computer Science &middot; Universitas Indonesia</p>
                     <h1>Victoriano Iman Santosa</h1>
                 </div>
-                <div class="hero-photo">
+                <div class="profile-photo">
                     <div class="photo-block"></div>
                     <img class="avatar" src="/static/img/Victoriano_Iman_Santosa.jpg" alt="Photo of Victoriano Iman Santosa">
                 </div>
-                <div class="hero-details">
+                <div class="profile-details">
                     <p class="bio">CS student at University Of Indonesia | Silver Medalist – Indonesia National Olympiad in Informatics (NOI) 2024 | Informatics Olympiad Coach</p>
                     <dl class="meta-list">
                         <div class="meta-row">
@@ -74,19 +81,17 @@
                     <div class="social-links">
                         <a href="https://github.com/victorimans" class="social-link">GitHub</a>
                         <a href="https://www.linkedin.com/in/victorianoimansantosa/" class="social-link">LinkedIn</a>
-                        <a href="mailto:Victoriano Iman Santosa@gmail.com" class="social-link">Email</a>
+                        <a href="mailto:victorianoimans123@gmail.com" class="social-link">Email</a>
                     </div>
                 </div>
             </div>
         </section>
-        <section id="about">
-        </section>
-        <section id="skills">
-        </section>
-        <section id="projects">
-        </section>
-        <section id="journey">
-        </section>
+
+        <section id="about" class="about-section"></section>
+        <section id="skills" class="skills-section"></section>
+        <section id="projects" class="projects-section"></section>
+        <section id="journey" class="journey-section"></section>
+        <section id="contact" class="contact-section"></section>
 
     </main>
 

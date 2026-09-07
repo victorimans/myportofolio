@@ -120,3 +120,8 @@ sftp-config.json
 
 # macOS
 .DS_Store
+
+#AI Docs
+AGENTS.md
+CONTEXT.md
+docs/

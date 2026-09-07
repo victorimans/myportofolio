@@ -195,16 +195,7 @@ a {
    PROFILE / ABOUT SECTION
 ========================================= */
 
-/*
-HTML kamu menggunakan:
-
-<section class="about" id="profile">
-
-jadi gunakan .about,
-bukan .hero
-*/
-
-.about {
+.profile-section {
     position: relative;
 
     padding:
@@ -216,7 +207,7 @@ bukan .hero
 
 /* layout utama */
 
-.hero-grid {
+.profile-grid {
     display: grid;
 
     grid-template-columns:
@@ -239,11 +230,11 @@ bukan .hero
    IDENTITY
 ========================================= */
 
-.hero-identity {
+.profile-identity {
     grid-area: identity;
 }
 
-.hero-kicker {
+.profile-kicker {
     margin-bottom: 0.75rem;
 
     font-size: 0.85rem;
@@ -256,7 +247,7 @@ bukan .hero
     color: var(--brown);
 }
 
-.hero-identity h1 {
+.profile-identity h1 {
     font-family:
         "Space Grotesk",
         sans-serif;
@@ -280,7 +271,7 @@ bukan .hero
    DETAILS
 ========================================= */
 
-.hero-details {
+.profile-details {
     grid-area: details;
 }
 
@@ -373,7 +364,7 @@ bukan .hero
    PROFILE IMAGE
 ========================================= */
 
-.hero-photo {
+.profile-photo {
     grid-area: photo;
 
     align-self: center;
@@ -558,14 +549,14 @@ bukan .hero
         padding-top: 76px;
     }
 
-    .about {
+    .profile-section {
         padding:
             3.5rem
             0
             4rem;
     }
 
-    .hero-grid {
+    .profile-grid {
         grid-template-columns: 1fr;
 
         grid-template-areas:
@@ -576,7 +567,7 @@ bukan .hero
         gap: 2rem;
     }
 
-    .hero-identity h1 {
+    .profile-identity h1 {
         font-size:
             clamp(
                 2.6rem,
@@ -585,7 +576,7 @@ bukan .hero
             );
     }
 
-    .hero-photo {
+    .profile-photo {
         max-width: 240px;
     }
 
