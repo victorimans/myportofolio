@@ -581,6 +581,46 @@ main {
     line-height: 1.55;
 }
 
+.coming-soon-section {
+    background: rgba(255, 250, 242, 0.5);
+    border-bottom: 1px solid var(--line);
+}
+
+.coming-soon-panel {
+    position: relative;
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 3.5rem);
+    border: 1px solid rgba(125, 90, 166, 0.24);
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(169, 140, 198, 0.18), rgba(237, 184, 204, 0.22));
+    text-align: center;
+}
+
+.coming-soon-panel::before {
+    display: block;
+    width: 3rem;
+    height: 0.25rem;
+    margin: 0 auto 1.5rem;
+    background: linear-gradient(90deg, var(--purple), var(--pink));
+    content: "";
+}
+
+.coming-soon-panel h2 {
+    margin-bottom: 1rem;
+    color: var(--ink);
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.coming-soon-panel p:not(.section-label) {
+    max-width: 34rem;
+    margin: 0 auto;
+    color: var(--muted);
+    line-height: 1.75;
+}
+
 
 /* =========================================
    FOOTER
