@@ -40,4 +40,7 @@ _Avoid_: Fake records, inactive interactions
 The fixed personal, academic, skills, project, journey, and contact information presented as part of the portfolio.
 _Avoid_: Database content, dynamic portfolio records
 
+**Mahasiswa**:
+A classroom hands-on record containing a student's name and NPM, displayed in the separate Mahasiswa section and managed through the Django admin.
+_Avoid_: Treating classroom Mahasiswa records as static portfolio content or portfolio milestones
 
