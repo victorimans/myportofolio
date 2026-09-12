@@ -32,6 +32,14 @@ _Avoid_: Repeating the About narrative, unsupported achievements
 The final portfolio section inviting relevant professional or academic conversations with Victoriano.
 _Avoid_: Contact form, response-time promises, unsupported availability claims
 
+**Blog**:
+The portfolio area for Victoriano's personal and technical writing, kept separate from Projects and Journey.
+_Avoid_: Treating Blog as a project showcase, an academic milestone list, or static portfolio content
+
+**Blog post**:
+An individual written piece presented in the Blog area, with its own title, body, and creation date.
+_Avoid_: Article when referring to the portfolio's canonical content type
+
 **Coming-soon placeholder**:
 A truthful temporary section message indicating that Projects or Journey content is intentionally not yet published.
 _Avoid_: Fake records, inactive interactions
@@ -43,4 +51,3 @@ _Avoid_: Database content, dynamic portfolio records
 **Mahasiswa**:
 A classroom hands-on record containing a student's name and NPM, displayed in the separate Mahasiswa section and managed through the Django admin.
 _Avoid_: Treating classroom Mahasiswa records as static portfolio content or portfolio milestones
-

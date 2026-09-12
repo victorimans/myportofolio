@@ -1,16 +1,17 @@
 # Portfolio Layout Plan
 
-Status: In progress — profile, body sections, footer, and Contact implementation are present; visual and Django verification remain
+Status: In progress — profile, body sections, footer, and Contact implementation are present; visual and Django verification remain; Blog checkpoint is documented and implementation is pending
 
 ## Sub-plan index
 
 - [x] [About section sub-plan](sections/about.md) created and aligned with the agreed direction.
 - [x] [Skills section sub-plan](sections/skills.md) created and aligned with the agreed direction.
+- [x] [Blog section sub-plan](sections/blog.md) created and aligned with the agreed direction; implementation remains pending.
 - [x] Create the Projects, Journey, and Contact sub-plans when those focused sessions begin.
 
 ## Progress check
 
-Last checked: 2026-09-07
+Last checked: 2026-09-12
 
 ### Done
 
@@ -30,6 +31,7 @@ Last checked: 2026-09-07
 - [x] The unused AOS stylesheet, script, and `AOS.init()` call have been removed.
 - [x] Reduced-motion handling is present for smooth scrolling, transitions, and sakura animation.
 - [x] Visible focus styles are present for links and buttons.
+- [x] The Blog scope, naming, content contract, and implementation checklist are documented in the [Blog sub-plan](sections/blog.md).
 
 ### Not yet done
 
@@ -42,6 +44,7 @@ Last checked: 2026-09-07
 - [ ] Verify readable contrast across the current palette and the completed sections.
 - [ ] Add the future top-navigation `Download CV` item after the About work is complete and the CV PDF exists.
 - [ ] Run Django checks and browser verification. Attempted on 2026-09-07, but `env\Scripts\python.exe` resolves to an inaccessible Python installation, the system Python launcher is unavailable, and no browser target is exposed for live verification.
+- [ ] Implement the database-backed Blog section according to the [Blog sub-plan](sections/blog.md), then run its migration, tests, and server verification.
 
 ## Follow-up session breakdown
 
@@ -80,6 +83,10 @@ Complete the remaining work as focused sessions. Each session should update the 
    - Run Django checks once Python/Django access is available.
    - Verify desktop/mobile rendering, collapsed navigation, all anchors and external links, footer behavior, and browser-console errors.
 
+9. **Blog section** — documentation checkpoint complete; implementation pending.
+   - Add the `BlogPost` model, migration, Admin registration, `/blog/` route/view/template, navbar links, minimal styles, and required tests.
+   - Follow the [Blog sub-plan](sections/blog.md) and update its checklist and verification log after implementation.
+
 ## Deferred navigation item
 
 - Add a `Download CV` item to the top navbar after the About section is complete and the CV PDF has been created. The item must work on desktop and collapsed mobile navigation and point to the tested CV file.
@@ -94,7 +101,7 @@ Refine the existing warm editorial portfolio so the profile and body sections ha
 - Keep the existing Profile, About, Skills, Projects, Journey, and Contact sections.
 - Keep the existing profile content and external links.
 - Keep the Bootstrap navbar and falling sakura effect.
-- Keep the site as one Django-rendered page with static portfolio content; do not add database models or admin-managed content.
+- Keep the existing landing page as one Django-rendered page with static portfolio content. The dedicated Blog page is an approved dynamic exception backed by `BlogPost` records.
 - Preserve useful code comments and update comments that describe removed or renamed markup.
 
 ## Layout changes
@@ -134,11 +141,13 @@ Refine the existing warm editorial portfolio so the profile and body sections ha
 - `static/css/style.css`: complete body/profile/footer layout, responsive rules, and reduced-motion handling.
 - `static/js/main.js`: remove the broken AOS initialization and keep the sakura behavior.
 
-## Files intentionally out of scope
+## Files intentionally out of scope for the layout work
 
 - `portofolio/views.py`: no view change is needed.
 - `portofolio/settings.py`: no Django configuration change is needed.
 - Database models, migrations, admin content, and new frontend dependencies.
+
+These exclusions apply to the layout work described above. They do not apply to the separately scoped Blog implementation, which is defined in the [Blog sub-plan](sections/blog.md).
 
 ## Verification after approval
 
