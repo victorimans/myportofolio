@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog - Victoriano Iman Santosa</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div id="sakura-layer" aria-hidden="true"></div>
+
+    <header class="site-header">
+        <nav class="navbar navbar-expand-lg fixed-top cream-nav">
+            <div class="container">
+                <a class="navbar-brand brand" href="{% url 'main:show_main' %}">
+                    <span>Victoriano Iman Santosa</span>
+                </a>
+
+                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+
+                <div class="collapse navbar-collapse" id="navbarContent">
+                    <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+                        <li class="nav-item"><a class="nav-link" href="{% url 'main:show_main' %}#about">About</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'main:show_main' %}#skills">Skills</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'main:show_main' %}#projects">Projects</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'main:show_main' %}#journey">Journey</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'main:show_experience' %}">Experience</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'main:show_blog' %}">Blog</a></li>
+                        <li class="nav-item"><a class="nav-link contact-nav" href="{% url 'main:show_main' %}#contact">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="blog-section" aria-labelledby="blog-heading">
+            <div class="container">
+                <h1 id="blog-heading">Blog</h1>
+
+                <div class="blog-list">
+                    {% for blog_post in blog_posts %}
+                        <article class="blog-post">
+                            <p class="blog-post-date">{{ blog_post.created_at|date:"j F Y" }}</p>
+                            <h2>{{ blog_post.title }}</h2>
+                            <div class="blog-post-content">{{ blog_post.content|linebreaks }}</div>
+                        </article>
+                    {% empty %}
+                        <p class="empty-state">No blog posts have been added yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-content">
+            <p>&copy; 2026 Victoriano Iman Santosa.</p>
+            <p>Fakultas Ilmu Komputer, Universitas Indonesia.</p>
+            <a href="{% url 'main:show_main' %}#profile">Back to profile</a>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

@@ -1,12 +1,12 @@
 # Portfolio Layout Plan
 
-Status: In progress — profile, body sections, footer, and Contact implementation are present; visual and Django verification remain; Blog checkpoint is documented and implementation is pending
+Status: In progress — profile, body sections, footer, Contact, and Blog implementation are present; visual and Django verification remain pending
 
 ## Sub-plan index
 
 - [x] [About section sub-plan](sections/about.md) created and aligned with the agreed direction.
 - [x] [Skills section sub-plan](sections/skills.md) created and aligned with the agreed direction.
-- [x] [Blog section sub-plan](sections/blog.md) created and aligned with the agreed direction; implementation remains pending.
+- [x] [Blog section sub-plan](sections/blog.md) created and aligned with the agreed direction; implementation is present and runtime verification remains pending.
 - [x] Create the Projects, Journey, and Contact sub-plans when those focused sessions begin.
 
 ## Progress check
@@ -44,7 +44,8 @@ Last checked: 2026-09-12
 - [ ] Verify readable contrast across the current palette and the completed sections.
 - [ ] Add the future top-navigation `Download CV` item after the About work is complete and the CV PDF exists.
 - [ ] Run Django checks and browser verification. Attempted on 2026-09-07, but `env\Scripts\python.exe` resolves to an inaccessible Python installation, the system Python launcher is unavailable, and no browser target is exposed for live verification.
-- [ ] Implement the database-backed Blog section according to the [Blog sub-plan](sections/blog.md), then run its migration, tests, and server verification.
+- [x] Implement the database-backed Blog section according to the [Blog sub-plan](sections/blog.md); the migration is applied.
+- [ ] Complete Blog unit-test, server-startup, and Admin workflow verification.
 
 ## Follow-up session breakdown
 
@@ -83,8 +84,8 @@ Complete the remaining work as focused sessions. Each session should update the 
    - Run Django checks once Python/Django access is available.
    - Verify desktop/mobile rendering, collapsed navigation, all anchors and external links, footer behavior, and browser-console errors.
 
-9. **Blog section** — documentation checkpoint complete; implementation pending.
-   - Add the `BlogPost` model, migration, Admin registration, `/blog/` route/view/template, navbar links, minimal styles, and required tests.
+9. **Blog section** — implementation complete; unit-test, server-startup, and Admin workflow verification remain pending.
+   - Add the remaining Blog unit tests, then complete server-startup and Admin workflow verification when the required tooling is available.
    - Follow the [Blog sub-plan](sections/blog.md) and update its checklist and verification log after implementation.
 
 ## Deferred navigation item

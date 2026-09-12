@@ -1,6 +1,6 @@
 # Blog Section
 
-**Status:** Documentation checkpoint complete; implementation deferred by current scope
+**Status:** Implementation complete; static audit complete; runtime verification pending
 
 **Parent plan:** [Portfolio layout plan](../portfolio-layout-plan.md)
 
@@ -84,12 +84,12 @@ The tests should also protect the agreed ordering and plain-text line-break beha
 - [x] Register `BlogPost` in `main/admin.py`.
 - [x] Add `show_blog` to `main/views.py` with ordered `blog_posts` context.
 - [x] Add the `/blog/` named route in `main/urls.py`.
-- [ ] Create `templates/blog.html` with the shared navbar and footer.
-- [ ] Render all posts with a Django Template Language loop.
-- [ ] Render the agreed empty-state message when no posts exist.
-- [ ] Preserve plain-text content and line breaks with autoescape and `linebreaks`.
-- [ ] Add the Blog navbar link to all three templates using `{% url %}`.
-- [ ] Add only the minimum responsive Blog styles required.
+- [x] Create `templates/blog.html` with the shared navbar and footer.
+- [x] Render all posts with a Django Template Language loop.
+- [x] Render the agreed empty-state message when no posts exist.
+- [x] Preserve plain-text content and line breaks with autoescape and `linebreaks`.
+- [x] Add the Blog navbar link to all three templates using `{% url %}`.
+- [x] Add only the minimum responsive Blog styles required.
 - [ ] Add the three required unit-test cases.
 - [ ] Run `python manage.py test` with all tests passing.
 - [ ] Run `python manage.py runserver` and confirm startup without errors.
@@ -131,4 +131,16 @@ A user can create or edit a BlogPost through the default Django Admin, and the s
 
 ## Verification log
 
-This document records the approved checkpoint only. Implementation and runtime verification are intentionally pending.
+Static implementation verification on 2026-09-12:
+
+- [x] The Blog template, post loop, empty state, date formatting, and `linebreaks` rendering are present.
+- [x] The Blog navbar link is present in `index.html`, `experience.html`, and `blog.html`.
+- [x] Minimum Blog-specific responsive styles are present.
+- [x] `main_blogpost` exists in `db.sqlite3`, and migration `0002_blogpost` is recorded as applied.
+- [x] JavaScript syntax and Git whitespace checks passed.
+
+Runtime verification remains pending because no accessible Python interpreter or browser target is available:
+
+- [ ] Blog-specific unit tests have not been added.
+- [ ] `python manage.py test` and `python manage.py runserver` could not be run.
+- [ ] Admin-created post rendering and live desktop/mobile behavior remain unverified.

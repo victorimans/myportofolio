@@ -894,6 +894,59 @@ main {
 }
 
 /* =========================================
+   BLOG
+========================================= */
+
+.blog-section {
+    padding: 4rem 0;
+    border-top: 1px solid var(--line);
+}
+
+.blog-section h1 {
+    max-width: 36rem;
+    margin: 0 0 2rem;
+    color: var(--ink);
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.blog-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.blog-post {
+    padding: 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(255, 250, 242, 0.74);
+}
+
+.blog-post-date {
+    margin-bottom: 0.5rem;
+    color: var(--accent-dark);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.blog-post h2 {
+    margin-bottom: 1rem;
+    font-size: clamp(1.35rem, 3vw, 1.75rem);
+    font-weight: 700;
+}
+
+.blog-post-content {
+    color: var(--muted);
+    line-height: 1.75;
+}
+
+.blog-post-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* =========================================
    FOOTER
 ========================================= */
 
