@@ -1,6 +1,6 @@
 from django.shortcuts import render
 
-from main.models import Experience
+from main.models import BlogPost, Experience
 
 
 def show_main(request):
@@ -21,3 +21,10 @@ def show_experience(request):
         "experience_list": Experience.objects.all(),
     }
     return render(request, "experience.html", context)
+
+
+def show_blog(request):
+    context = {
+        "blog_posts": BlogPost.objects.order_by("-created_at", "-id"),
+    }
+    return render(request, "blog.html", context)

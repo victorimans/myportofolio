@@ -78,12 +78,12 @@ The tests should also protect the agreed ordering and plain-text line-break beha
 
 ## Implementation checklist
 
-- [ ] Add `BlogPost` to `main/models.py` with the three agreed fields.
-- [ ] Create the model migration and include the migration file.
-- [ ] Apply the migration successfully.
-- [ ] Register `BlogPost` in `main/admin.py`.
-- [ ] Add `show_blog` to `main/views.py` with ordered `blog_posts` context.
-- [ ] Add the `/blog/` named route in `main/urls.py`.
+- [x] Add `BlogPost` to `main/models.py` with the three agreed fields.
+- [x] Create the model migration and include the migration file.
+- [x] Apply the migration successfully.
+- [x] Register `BlogPost` in `main/admin.py`.
+- [x] Add `show_blog` to `main/views.py` with ordered `blog_posts` context.
+- [x] Add the `/blog/` named route in `main/urls.py`.
 - [ ] Create `templates/blog.html` with the shared navbar and footer.
 - [ ] Render all posts with a Django Template Language loop.
 - [ ] Render the agreed empty-state message when no posts exist.
