@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from main.models import Experience
+from main.models import BlogPost, Experience
 
 
 class MainTest(TestCase):
@@ -56,3 +56,27 @@ class MainTest(TestCase):
         self.assertFalse(self.experience.is_ongoing)
         self.assertContains(response, "Selesai")
         self.assertNotContains(response, "Sedang berlangsung")
+
+    def test_blog_page_is_accessible_and_uses_blog_template(self):
+        response = self.client.get(reverse("main:show_blog"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "blog.html")
+
+    def test_blog_page_displays_stored_post_title_and_content(self):
+        blog_post = BlogPost.objects.create(
+            title="My first blog post",
+            content="This is the content of my first blog post.",
+        )
+
+        response = self.client.get(reverse("main:show_blog"))
+
+        self.assertContains(response, blog_post.title)
+        self.assertContains(response, blog_post.content)
+
+    def test_empty_blog_page_displays_empty_state(self):
+        response = self.client.get(reverse("main:show_blog"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "blog.html")
+        self.assertContains(response, "No blog posts have been added yet.")

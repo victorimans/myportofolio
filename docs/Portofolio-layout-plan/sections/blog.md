@@ -90,10 +90,10 @@ The tests should also protect the agreed ordering and plain-text line-break beha
 - [x] Preserve plain-text content and line breaks with autoescape and `linebreaks`.
 - [x] Add the Blog navbar link to all three templates using `{% url %}`.
 - [x] Add only the minimum responsive Blog styles required.
-- [ ] Add the three required unit-test cases.
-- [ ] Run `python manage.py test` with all tests passing.
-- [ ] Run `python manage.py runserver` and confirm startup without errors.
-- [ ] Verify that an Admin-created post appears on `/blog/`.
+- [x] Add the three required unit-test cases.
+- [x] Run `python manage.py test` with all tests passing.
+- [x] Run `python manage.py runserver` and confirm startup without errors.
+- [x] Verify that an Admin-created post appears on `/blog/`.
 
 ## Acceptance scenarios
 
@@ -141,6 +141,6 @@ Static implementation verification on 2026-09-12:
 
 Runtime verification remains pending because no accessible Python interpreter or browser target is available:
 
-- [ ] Blog-specific unit tests have not been added.
+- [x] Blog-specific unit-test cases have been added.
 - [ ] `python manage.py test` and `python manage.py runserver` could not be run.
 - [ ] Admin-created post rendering and live desktop/mobile behavior remain unverified.
