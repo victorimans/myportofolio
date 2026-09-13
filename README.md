@@ -66,3 +66,35 @@ Adapun AGENTS.md, CONTEXT.md, dan docs folders. Berisi mengenai hal hal yang say
 
 3. Karena website saya masih berupa static web, informasi di dalamnya harus diperbarui secara manual melalui kode HTML. Hal ini menjadi keterbatasan ketika saya ingin menambahkan proyek baru, memperbarui informasi, atau mengelola banyak konten. Selain itu, fitur seperti pencarian, penyaringan proyek, formulir kontak, login, dan penyimpanan data belum dapat dilakukan secara optimal tanpa bantuan backend atau database.
 
+## AI Disclosure Tugas 2
+
+Pada Tugas 2, saya menggunakan ChatGPT Plus sebagai alat bantu untuk mengembangkan fitur Blog pada website portofolio. Saya memberikan konteks proyek, batasan desain, serta spesifikasi yang terdokumentasi pada `docs/Portofolio-layout-plan/sections/blog.md`. Berdasarkan konteks tersebut, AI membantu mengeksplorasi dan menyusun implementasi Django yang meliputi model `BlogPost`, migration, registrasi Django Admin, view, URL routing, template Blog, navigasi, CSS responsive, dan unit test.
+
+AI juga membantu meninjau beberapa keputusan teknis, seperti penggunaan database untuk membedakan Blog dari konten landing page yang bersifat statis, pengurutan post berdasarkan tanggal dan ID, penanganan empty state, pelestarian line break dengan filter `linebreaks`, serta penggunaan autoescape agar konten post tidak diperlakukan sebagai raw HTML.
+
+AI tidak menjadi sumber kebenaran final. Beberapa keterbatasannya adalah:
+
+- AI dapat salah memahami struktur folder, nama file, atau kontrak fitur yang sudah ditetapkan;
+- AI dapat menghasilkan kode Django yang tampak benar tetapi belum tentu sesuai dengan versi Django, konfigurasi proyek, atau database yang digunakan;
+- AI dapat menyarankan fitur tambahan yang tidak diperlukan, seperti detail page, pagination, rich-text editing, atau seed data;
+- AI dapat menganggap migration, unit test, server, dan tampilan browser sudah berhasil hanya karena kode terlihat lengkap;
+- AI tidak dapat menentukan isi blog yang benar-benar merepresentasikan pengalaman dan pendapat saya.
+
+Perbaikan dan validasi manual yang saya lakukan meliputi:
+
+- Menetapkan scope, naming, content contract, acceptance scenario, dan hal-hal yang berada di luar scope pada dokumen rencana Blog;
+- Mereview implementasi terhadap struktur proyek Django yang sudah ada dan mempertahankan konsistensi navbar, footer, Bootstrap, serta responsive visual identity;
+- Memastikan Blog tidak menggunakan fabricated posts, seed data, atau fixture data, sehingga post hanya dapat ditambahkan melalui Django Admin;
+- Memeriksa secara statis keberadaan model, migration, routing, template loop, empty state, autoescape, linebreaks, navbar link, dan unit test yang dipersyaratkan;
+- Membedakan unit test yang sudah ditulis dari test runtime, startup server, workflow Admin, dan pemeriksaan visual desktop/mobile yang belum berhasil dijalankan dalam environment saat ini.
+
+Dengan demikian, AI digunakan sebagai alat bantu perencanaan, eksplorasi, implementasi awal, dan review. Keputusan akhir mengenai scope, struktur kode, kebenaran konten, validasi hasil, serta tanggung jawab terhadap repository tetap berada pada saya.
+
+
+## Referensi percakapan AI
+
+Semua percakapan AI yang berkaitan dengan proyek ini dapat dicantumkan di bagian berikut setelah tersedia dalam bentuk URL share:
+
+- Percakapan AI - perencanaan dan penyusunan blog.html + BlogPost model: `https://chatgpt.com/s/cx_6aa635ea53a88191ad7c4c5048950a73`
+- Percakapan AI -  bantuan CSS, responsive layout, dan accessibility : `https://chatgpt.com/s/cx_6aa63697ee5c8191850d68fda479b16e`
+- Percakapan AI - checking with the contraint and specifiaction : `https://chatgpt.com/s/cx_6aa6366beef48191a8787e27a70ac01d`
