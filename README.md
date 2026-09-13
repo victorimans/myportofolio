@@ -98,3 +98,27 @@ Semua percakapan AI yang berkaitan dengan proyek ini dapat dicantumkan di bagian
 - Percakapan AI - perencanaan dan penyusunan blog.html + BlogPost model: `https://chatgpt.com/s/cx_6aa635ea53a88191ad7c4c5048950a73`
 - Percakapan AI -  bantuan CSS, responsive layout, dan accessibility : `https://chatgpt.com/s/cx_6aa63697ee5c8191850d68fda479b16e`
 - Percakapan AI - checking with the contraint and specifiaction : `https://chatgpt.com/s/cx_6aa6366beef48191a8787e27a70ac01d`
+
+
+## Tugas 2
+# Soal
+1. Jelaskan alur yang terjadi ketika pengguna membuka halaman portofolio baru, mulai dari permintaan yang diterima proyek hingga data ditampilkan pada browser. Dalam jawabanmu, jelaskan peran urls.py proyek, urls.py aplikasi, view, model, dan template.
+
+2. Mengapa data untuk bagian portofolio baru sebaiknya disimpan pada model dan tidak ditulis langsung di dalam template? Jelaskan dampaknya terhadap kemudahan pemeliharaan dan pengembangan aplikasi.
+
+3. Apa perbedaan fungsi makemigrations dan migrate pada Django? Berikan contoh perubahan model yang mengharuskanmu menjalankan kedua perintah tersebut.
+
+# Jawaban
+1. Ketika pengguna membuka URL `/blog/`, browser mengirimkan HTTP request ke aplikasi Django. Request tersebut pertama kali diproses berdasarkan konfigurasi URL proyek pada `portofolio/urls.py`. File ini menggunakan `include("main.urls")`, sehingga request selain `/admin/` diteruskan ke konfigurasi URL milik aplikasi `main`.
+
+Selanjutnya, `main/urls.py` mencocokkan path `blog/` dan mengarahkannya ke view `show_blog` dengan nama route `main:show_blog`. View tersebut mengambil data dari model `BlogPost` menggunakan `BlogPost.objects.order_by("-created_at", "-id")`. Model berfungsi sebagai representasi struktur data pada database, yaitu field `title`, `content`, dan `created_at` pada tabel `main_blogpost`.
+
+Data yang diperoleh view dimasukkan ke dalam context dengan nama `blog_posts`, kemudian view memanggil `render` untuk menggunakan template `templates/blog.html`. Template melakukan perulangan terhadap `blog_posts`, lalu menampilkan judul, tanggal pembuatan, dan isi setiap post sebagai HTML. Jika belum ada data, template menampilkan pesan empty state. Setelah template selesai dirender, Django mengirimkan HTML sebagai HTTP response dan browser menampilkannya kepada pengguna.
+
+2. Data sebaiknya disimpan pada model karena data dan tampilan memiliki tanggung jawab yang berbeda. Model `BlogPost` menyimpan data blog secara terstruktur di database, sedangkan `blog.html` hanya bertugas mengatur cara data tersebut ditampilkan. Dengan pemisahan ini, penambahan atau perubahan post dapat dilakukan melalui Django Admin tanpa mengubah kode template.
+
+Cara ini juga membuat aplikasi lebih mudah dipelihara dan dikembangkan. Satu template dapat menampilkan banyak post menggunakan perulangan, data dapat diurutkan melalui query, dan fitur lain seperti pencarian atau filter dapat ditambahkan pada view tanpa menulis ulang struktur HTML. Jika data ditulis langsung di template, setiap perubahan isi mengharuskan pengeditan kode tampilan secara manual dan akan lebih sulit ketika jumlah post bertambah. Penyimpanan melalui model juga membuat data lebih konsisten, dapat digunakan kembali oleh halaman atau fitur lain, serta tetap memanfaatkan mekanisme autoescape Django ketika ditampilkan.
+
+3. `makemigrations` dan `migrate` memiliki fungsi yang berbeda. Perintah `makemigrations` membaca perubahan pada model lalu membuat file migration yang berisi instruksi perubahan struktur database. Perintah ini belum menerapkan perubahan tersebut ke database. Sementara itu, `migrate` menjalankan migration yang belum diterapkan ke database dan mencatat migration yang sudah dijalankan pada tabel `django_migrations`.
+
+Contohnya pada Tugas 2, saya menambahkan model `BlogPost` dengan field `title`, `content`, dan `created_at`. Perubahan model tersebut menghasilkan file `main/migrations/0002_blogpost.py`. Setelah file migration dibuat dengan `python manage.py makemigrations`, migration perlu diterapkan menggunakan `python manage.py migrate` agar tabel `main_blogpost` benar-benar tersedia di database. Contoh perubahan berikutnya adalah menambahkan field `published_at` pada `BlogPost`; perubahan itu juga mengharuskan saya menjalankan kedua perintah tersebut secara berurutan.
