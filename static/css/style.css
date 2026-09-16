@@ -955,6 +955,10 @@ main {
     border-radius: var(--radius);
 }
 
+.project-delete-form {
+    margin-top: 1rem;
+}
+
 .project-form,
 .blog-form {
     width: 100%;

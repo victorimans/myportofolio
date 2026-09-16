@@ -118,6 +118,36 @@ class MainTest(TestCase):
         self.assertContains(response, 'value="portfolio"')
         self.assertContains(response, 'name="title"')
 
+    def test_delete_project_removes_project_and_redirects(self):
+        project = Project.objects.create(
+            title="Project to delete",
+            description="This project will be removed.",
+            tech_stack="Django",
+        )
+
+        response = self.client.post(
+            reverse("main:delete_project", args=[project.id]),
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Project.objects.filter(pk=project.id).exists())
+        self.assertContains(response, "Proyek berhasil dihapus!")
+
+    def test_delete_project_rejects_get_requests(self):
+        project = Project.objects.create(
+            title="Project kept on get",
+            description="GET must not delete this project.",
+            tech_stack="Django",
+        )
+
+        response = self.client.get(
+            reverse("main:delete_project", args=[project.id]),
+        )
+
+        self.assertEqual(response.status_code, 405)
+        self.assertTrue(Project.objects.filter(pk=project.id).exists())
+
     def test_blog_page_is_accessible_and_uses_blog_template(self):
         response = self.client.get(reverse("main:show_blog"))
 

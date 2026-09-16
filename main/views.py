@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.core import serializers
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from main.forms import BlogPostForm, ProjectForm
 from main.models import BlogPost, Experience, Project
@@ -57,6 +58,14 @@ def create_project(request):
         "form": form,
     }
     return render(request, "projects_form.html", context)
+
+
+@require_POST
+def delete_project(request, id):
+    project = get_object_or_404(Project, pk=id)
+    project.delete()
+    messages.success(request, "Proyek berhasil dihapus!")
+    return redirect("main:show_projects")
 
 
 def get_projects_json(request):

@@ -41,6 +41,11 @@
                                 <a href="{{ project.project_url }}" target="_blank" rel="noopener noreferrer">Lihat proyek</a>
                             </p>
                         {% endif %}
+
+                        <form method="post" action="{% url 'main:delete_project' project.id %}" class="project-delete-form">
+                            {% csrf_token %}
+                            <button type="submit" class="button button-secondary">Hapus Project</button>
+                        </form>
                     </article>
                 {% empty %}
                     <p class="empty-state">Belum ada proyek yang ditambahkan.</p>
