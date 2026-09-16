@@ -956,7 +956,34 @@ main {
 }
 
 .project-delete-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.65rem;
     margin-top: 1rem;
+}
+
+.project-delete-form label {
+    flex-basis: 100%;
+    color: var(--brown);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.project-delete-form input {
+    flex: 1 1 10rem;
+    min-width: 0;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+}
+
+.project-delete-form input:focus {
+    outline: 2px solid var(--accent);
+    border-color: var(--accent);
 }
 
 .project-form,

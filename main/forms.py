@@ -1,9 +1,22 @@
+from django import forms
 from django.forms import ModelForm, TextInput, Textarea, URLInput
 
 from main.models import BlogPost, Project
 
 
 class ProjectForm(ModelForm):
+    secret = forms.CharField(
+        label="Kode Rahasia",
+        required=False,
+        strip=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "placeholder": "Masukkan kode rahasia",
+                "autocomplete": "current-password",
+            }
+        ),
+    )
+
     class Meta:
         model = Project
         fields = [

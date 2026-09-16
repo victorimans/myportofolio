@@ -158,3 +158,5 @@ MAILERS = {
 
 # gunakan https:// untuk trailing urlnya
 CSRF_TRUSTED_ORIGINS = ["https://victoriano-iman-myportofolio.pws.cs.ui.ac.id"]
+
+PORTFOLIO_WRITE_SECRET = os.getenv("PORTFOLIO_WRITE_SECRET", "")

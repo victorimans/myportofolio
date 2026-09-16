@@ -1,3 +1,6 @@
+import secrets
+
+from django.conf import settings
 from django.contrib import messages
 from django.core import serializers
 from django.http import HttpResponse
@@ -6,6 +9,19 @@ from django.views.decorators.http import require_POST
 
 from main.forms import BlogPostForm, ProjectForm
 from main.models import BlogPost, Experience, Project
+
+
+def _has_valid_write_secret(request):
+    configured_secret = settings.PORTFOLIO_WRITE_SECRET
+    provided_secret = request.headers.get("X-Portfolio-Write-Secret")
+
+    if provided_secret is None:
+        provided_secret = request.POST.get("secret", "")
+
+    return bool(configured_secret) and secrets.compare_digest(
+        provided_secret,
+        configured_secret,
+    )
 
 
 def show_main(request):
@@ -49,9 +65,12 @@ def create_project(request):
     form = ProjectForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Proyek baru berhasil ditambahkan!")
-        return redirect("main:show_projects")
+        if _has_valid_write_secret(request):
+            form.save()
+            messages.success(request, "Proyek baru berhasil ditambahkan!")
+            return redirect("main:show_projects")
+
+        form.add_error("secret", "Kode rahasia tidak valid.")
 
     context = {
         "name": "Victoriano Iman Santosa",
@@ -62,6 +81,10 @@ def create_project(request):
 
 @require_POST
 def delete_project(request, id):
+    if not _has_valid_write_secret(request):
+        messages.error(request, "Kode rahasia tidak valid.")
+        return redirect("main:show_projects")
+
     project = get_object_or_404(Project, pk=id)
     project.delete()
     messages.success(request, "Proyek berhasil dihapus!")

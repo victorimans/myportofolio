@@ -1,14 +1,16 @@
 import json
 
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from main.models import BlogPost, Experience, Project
 
 
+@override_settings(PORTFOLIO_WRITE_SECRET="test-write-secret")
 class MainTest(TestCase):
     def setUp(self):
         self.experience = Experience.objects.create(
@@ -127,12 +129,42 @@ class MainTest(TestCase):
 
         response = self.client.post(
             reverse("main:delete_project", args=[project.id]),
+            {"secret": "test-write-secret"},
             follow=True,
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Project.objects.filter(pk=project.id).exists())
         self.assertContains(response, "Proyek berhasil dihapus!")
+
+    def test_project_form_requires_write_secret(self):
+        response = self.client.post(
+            reverse("main:create_project"),
+            {
+                "title": "Protected project",
+                "description": "This should not be saved without the secret.",
+                "tech_stack": "Django",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Project.objects.filter(title="Protected project").exists())
+        self.assertContains(response, "Kode rahasia tidak valid.")
+
+    def test_project_form_accepts_write_secret_header(self):
+        response = self.client.post(
+            reverse("main:create_project"),
+            {
+                "title": "Protected project",
+                "description": "This should be saved with the header.",
+                "tech_stack": "Django",
+            },
+            HTTP_X_PORTFOLIO_WRITE_SECRET=settings.PORTFOLIO_WRITE_SECRET,
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Project.objects.filter(title="Protected project").exists())
 
     def test_delete_project_rejects_get_requests(self):
         project = Project.objects.create(

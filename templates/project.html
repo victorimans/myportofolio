@@ -44,6 +44,15 @@
 
                         <form method="post" action="{% url 'main:delete_project' project.id %}" class="project-delete-form">
                             {% csrf_token %}
+                            <label for="project-delete-secret-{{ project.id }}">Kode rahasia</label>
+                            <input
+                                id="project-delete-secret-{{ project.id }}"
+                                name="secret"
+                                type="password"
+                                placeholder="Kode rahasia"
+                                autocomplete="current-password"
+                                required
+                            >
                             <button type="submit" class="button button-secondary">Hapus Project</button>
                         </form>
                     </article>
