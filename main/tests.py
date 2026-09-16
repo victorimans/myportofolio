@@ -1,3 +1,5 @@
+from django.contrib import admin
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -74,9 +76,63 @@ class MainTest(TestCase):
         self.assertContains(response, blog_post.title)
         self.assertContains(response, blog_post.content)
 
+    def test_blog_posts_are_ordered_newest_first(self):
+        older_post = BlogPost.objects.create(title="Older post", content="Older content")
+        newer_post = BlogPost.objects.create(title="Newer post", content="Newer content")
+        timestamp = timezone.now()
+        BlogPost.objects.filter(pk__in=[older_post.pk, newer_post.pk]).update(created_at=timestamp)
+
+        response = self.client.get(reverse("main:show_blog"))
+        rendered_html = response.content.decode()
+
+        self.assertLess(rendered_html.index(newer_post.title), rendered_html.index(older_post.title))
+
+    def test_blog_content_preserves_line_breaks_and_escapes_html(self):
+        BlogPost.objects.create(
+            title="Plain text post",
+            content="First line\nSecond line\n\n<strong>Not raw HTML</strong>",
+        )
+
+        response = self.client.get(reverse("main:show_blog"))
+
+        self.assertContains(response, "First line<br>Second line")
+        self.assertContains(response, "&lt;strong&gt;Not raw HTML&lt;/strong&gt;")
+        self.assertNotContains(response, "<strong>Not raw HTML</strong>")
+
+    def test_blog_nav_link_is_available_on_all_pages(self):
+        for route_name in ("main:show_main", "main:show_experience", "main:show_blog"):
+            response = self.client.get(reverse(route_name))
+
+            self.assertContains(response, f'href="{reverse("main:show_blog")}"')
+
     def test_empty_blog_page_displays_empty_state(self):
         response = self.client.get(reverse("main:show_blog"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "blog.html")
         self.assertContains(response, "No blog posts have been added yet.")
+
+    def test_blog_post_is_registered_in_default_admin(self):
+        self.assertIn(BlogPost, admin.site._registry)
+
+    def test_admin_created_blog_post_appears_on_blog_page(self):
+        get_user_model().objects.create_superuser(
+            username="blog-admin",
+            email="blog-admin@example.com",
+            password="test-password",
+        )
+        self.assertTrue(self.client.login(username="blog-admin", password="test-password"))
+
+        response = self.client.post(
+            reverse("admin:main_blogpost_add"),
+            {
+                "title": "Admin-created post",
+                "content": "Content entered through Django Admin.",
+                "_save": "Save",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        blog_response = self.client.get(reverse("main:show_blog"))
+        self.assertContains(blog_response, "Admin-created post")
+        self.assertContains(blog_response, "Content entered through Django Admin.")

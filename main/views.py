@@ -1,6 +1,10 @@
-from django.shortcuts import render
+from django.contrib import messages
+from django.core import serializers
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
 
-from main.models import BlogPost, Experience
+from main.forms import ProjectForm
+from main.models import BlogPost, Experience, Project
 
 
 def show_main(request):
@@ -23,8 +27,43 @@ def show_experience(request):
     return render(request, "experience.html", context)
 
 
+def show_projects(request):
+    context = {
+        "name": "Victoriano Iman Santosa",
+        "project_list": Project.objects.all(),
+    }
+    return render(request, "project.html", context)
+
+
+def create_project(request):
+    form = ProjectForm(request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Proyek baru berhasil ditambahkan!")
+        return redirect("main:show_projects")
+
+    context = {
+        "name": "Victoriano Iman Santosa",
+        "form": form,
+    }
+    return render(request, "projects_form.html", context)
+
+
+def show_json(request):
+    data = serializers.serialize("json", Project.objects.all())
+    return HttpResponse(data, content_type="application/json")
+
+
+def show_json_by_id(request, id):
+    project = get_object_or_404(Project, pk=id)
+    data = serializers.serialize("json", [project])
+    return HttpResponse(data, content_type="application/json")
+
+
 def show_blog(request):
     context = {
+        "name": "Victoriano Iman Santosa",
         "blog_posts": BlogPost.objects.order_by("-created_at", "-id"),
     }
     return render(request, "blog.html", context)

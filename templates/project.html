@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Projects - {{ name }}{% endblock %}
+
+{% block content %}
+    <section class="experience-section" id="projects" aria-labelledby="projects-heading">
+        <div class="container">
+            <p class="section-kicker">Karya yang saya bangun</p>
+            <h1 id="projects-heading">Projects</h1>
+
+            <p class="project-page-actions">
+                <a href="{% url 'main:create_project' %}" class="button">Tambah Project</a>
+            </p>
+
+            <div class="experience-grid project-grid">
+                {% for project in project_list %}
+                    <article class="experience-card project-card">
+                        {% if project.project_image_url %}
+                            <img class="project-image" src="{{ project.project_image_url }}" alt="Gambar {{ project.title }}">
+                        {% endif %}
+                        <span class="experience-category">{{ project.tech_stack }}</span>
+                        <h2>{{ project.title }}</h2>
+                        <p class="experience-description">{{ project.description }}</p>
+
+                        {% if project.project_url %}
+                            <p class="experience-status">
+                                <a href="{{ project.project_url }}" target="_blank" rel="noopener noreferrer">Lihat proyek</a>
+                            </p>
+                        {% endif %}
+                    </article>
+                {% empty %}
+                    <p class="empty-state">Belum ada proyek yang ditambahkan.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+{% endblock %}

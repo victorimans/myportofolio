@@ -1,17 +1,17 @@
 # Portfolio Layout Plan
 
-Status: In progress — profile, body sections, footer, Contact, and Blog implementation are present; visual and Django verification remain pending
+Status: In progress — profile, body sections, footer, Contact, and Blog implementation are present; live visual verification remains pending
 
 ## Sub-plan index
 
 - [x] [About section sub-plan](sections/about.md) created and aligned with the agreed direction.
 - [x] [Skills section sub-plan](sections/skills.md) created and aligned with the agreed direction.
-- [x] [Blog section sub-plan](sections/blog.md) created and aligned with the agreed direction; implementation is present and runtime verification remains pending.
+- [x] [Blog section sub-plan](sections/blog.md) created and aligned with the agreed direction; implementation and runtime verification are complete.
 - [x] Create the Projects, Journey, and Contact sub-plans when those focused sessions begin.
 
 ## Progress check
 
-Last checked: 2026-09-12
+Last checked: 2026-09-16
 
 ### Done
 
@@ -43,9 +43,9 @@ Last checked: 2026-09-12
 - [x] Finish the Contact call-to-action area using the Contact redesign proposal.
 - [ ] Verify readable contrast across the current palette and the completed sections.
 - [ ] Add the future top-navigation `Download CV` item after the About work is complete and the CV PDF exists.
-- [ ] Run Django checks and browser verification. Attempted on 2026-09-07, but `env\Scripts\python.exe` resolves to an inaccessible Python installation, the system Python launcher is unavailable, and no browser target is exposed for live verification.
+- [ ] Run browser verification. Django checks and runtime verification passed on 2026-09-16; no browser target is exposed for live verification.
 - [x] Implement the database-backed Blog section according to the [Blog sub-plan](sections/blog.md); the migration is applied.
-- [ ] Complete Blog unit-test, server-startup, and Admin workflow verification.
+- [x] Complete Blog unit-test, server-startup, and Admin workflow verification.
 
 ## Follow-up session breakdown
 
@@ -80,13 +80,12 @@ Complete the remaining work as focused sessions. Each session should update the 
 7. **Accessibility and visual polish** — static structure and reduced-motion/focus rules are present; contrast and live responsive verification remain pending.
    - Verify semantic structure, focus states, image text, contrast, reduced motion, and fixed-navbar anchor behavior across all sections.
 
-8. **Final verification** — blocked by unavailable Python/browser tooling.
-   - Run Django checks once Python/Django access is available.
+8. **Final verification** — live browser verification remains pending.
+   - Run Django checks once the remaining verification environment is available.
    - Verify desktop/mobile rendering, collapsed navigation, all anchors and external links, footer behavior, and browser-console errors.
 
-9. **Blog section** — implementation complete; unit-test, server-startup, and Admin workflow verification remain pending.
-   - Add the remaining Blog unit tests, then complete server-startup and Admin workflow verification when the required tooling is available.
-   - Follow the [Blog sub-plan](sections/blog.md) and update its checklist and verification log after implementation.
+9. **Blog section** — implementation and runtime verification complete; live visual verification remains pending.
+   - Recheck the Blog page at desktop and mobile widths when a browser target is available.
 
 ## Deferred navigation item
 

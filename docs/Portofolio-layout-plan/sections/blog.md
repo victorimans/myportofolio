@@ -1,6 +1,6 @@
 # Blog Section
 
-**Status:** Implementation complete; static audit complete; runtime verification pending
+**Status:** Implementation complete; runtime verification complete; live visual verification pending
 
 **Parent plan:** [Portfolio layout plan](../portfolio-layout-plan.md)
 
@@ -131,7 +131,7 @@ A user can create or edit a BlogPost through the default Django Admin, and the s
 
 ## Verification log
 
-Static implementation verification on 2026-09-12:
+Static and runtime verification on 2026-09-16:
 
 - [x] The Blog template, post loop, empty state, date formatting, and `linebreaks` rendering are present.
 - [x] The Blog navbar link is present in `index.html`, `experience.html`, and `blog.html`.
@@ -139,8 +139,9 @@ Static implementation verification on 2026-09-12:
 - [x] `main_blogpost` exists in `db.sqlite3`, and migration `0002_blogpost` is recorded as applied.
 - [x] JavaScript syntax and Git whitespace checks passed.
 
-Runtime verification remains pending because no accessible Python interpreter or browser target is available:
-
 - [x] Blog-specific unit-test cases have been added.
-- [ ] `python manage.py test` and `python manage.py runserver` could not be run.
-- [ ] Admin-created post rendering and live desktop/mobile behavior remain unverified.
+- [x] `manage.py check` passed with no issues.
+- [x] `manage.py test` passed with 14 tests.
+- [x] `manage.py runserver` started successfully and `/blog/` returned HTTP 200.
+- [x] An Admin-created post was submitted through the default Admin route and appeared on `/blog/` in an end-to-end test.
+- [ ] Live desktop/mobile behavior remains unverified because no browser target is available.

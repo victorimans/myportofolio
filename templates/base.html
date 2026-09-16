@@ -33,7 +33,7 @@
                     <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:show_main' %}#about">About</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:show_main' %}#skills">Skills</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'main:show_main' %}#projects">Projects</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'main:show_projects' %}">Projects</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:show_main' %}#journey">Journey</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:show_experience' %}">Experience</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'main:show_blog' %}">Blog</a></li>
@@ -45,6 +45,13 @@
     </header>
 
     <main>
+        {% if messages %}
+            <div class="container site-messages" aria-live="polite">
+                {% for message in messages %}
+                    <p class="site-message">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
 
