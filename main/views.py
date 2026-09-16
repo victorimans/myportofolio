@@ -3,7 +3,7 @@ from django.core import serializers
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from main.forms import ProjectForm
+from main.forms import BlogPostForm, ProjectForm
 from main.models import BlogPost, Experience, Project
 
 
@@ -59,6 +59,21 @@ def show_json_by_id(request, id):
     project = get_object_or_404(Project, pk=id)
     data = serializers.serialize("json", [project])
     return HttpResponse(data, content_type="application/json")
+
+
+def create_blog(request):
+    form = BlogPostForm(request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Blog baru berhasil ditambahkan!")
+        return redirect("main:show_blog")
+
+    context = {
+        "name": "Victoriano Iman Santosa",
+        "form": form,
+    }
+    return render(request, "blog_form.html", context)
 
 
 def show_blog(request):

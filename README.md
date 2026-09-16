@@ -84,7 +84,7 @@ Perbaikan dan validasi manual yang saya lakukan meliputi:
 
 - Menetapkan scope, naming, content contract, acceptance scenario, dan hal-hal yang berada di luar scope pada dokumen rencana Blog;
 - Mereview implementasi terhadap struktur proyek Django yang sudah ada dan mempertahankan konsistensi navbar, footer, Bootstrap, serta responsive visual identity;
-- Memastikan Blog tidak menggunakan fabricated posts, seed data, atau fixture data, sehingga post hanya dapat ditambahkan melalui Django Admin;
+- Memastikan Blog tidak menggunakan fabricated posts, seed data, atau fixture data, sehingga post hanya dapat ditambahkan melalui form Blog atau Django Admin;
 - Memeriksa secara statis keberadaan model, migration, routing, template loop, empty state, autoescape, linebreaks, navbar link, dan unit test yang dipersyaratkan;
 - Membedakan unit test yang sudah ditulis dari test runtime, startup server, workflow Admin, dan pemeriksaan visual desktop/mobile yang belum berhasil dijalankan dalam environment saat ini.
 
@@ -117,7 +117,7 @@ Data yang diperoleh view dimasukkan ke dalam context dengan nama `blog_posts`, k
 
 2. Data sebaiknya disimpan pada model karena data dan tampilan memiliki tanggung jawab yang berbeda. Model `BlogPost` menyimpan data blog secara terstruktur di database, sedangkan `blog.html` hanya bertugas mengatur cara data tersebut ditampilkan. Dengan pemisahan ini, penambahan atau perubahan post dapat dilakukan melalui Django Admin tanpa mengubah kode template.
 
-Cara ini juga membuat aplikasi lebih mudah dipelihara dan dikembangkan. Satu template dapat menampilkan banyak post menggunakan perulangan, data dapat diurutkan melalui query, dan fitur lain seperti pencarian atau filter dapat ditambahkan pada view tanpa menulis ulang struktur HTML. Jika data ditulis langsung di template, setiap perubahan isi mengharuskan pengeditan kode tampilan secara manual dan akan lebih sulit ketika jumlah post bertambah. Penyimpanan melalui model juga membuat data lebih konsisten, dapat digunakan kembali oleh halaman atau fitur lain, serta tetap memanfaatkan mekanisme autoescape Django ketika ditampilkan.
+Cara ini juga membuat aplikasi lebih mudah dipelihara dan dikembangkan. Satu template dapat menampilkan banyak post menggunakan perulangan, data dapat diurutkan melalui query, dan fitur lain seperti pencarian atau filter dapat ditambahkan pada view tanpa menulis ulang struktur HTML. Jika data ditulis langsung di template, setiap perubahan isi mengharuskan pengeditan kode tampilan secara manual dan akan lebih sulit ketika jumlah post bertambah. Penyimpanan melalui model juga membuat data lebih konsisten, dapat digunakan kembali oleh halaman atau fitur lain, serta tetap memanfaatkan mekanisme autoescape Django ketika ditampilkan. Post dapat ditambahkan melalui form Blog atau Django Admin tanpa mengubah template.
 
 3. `makemigrations` dan `migrate` memiliki fungsi yang berbeda. Perintah `makemigrations` membaca perubahan pada model lalu membuat file migration yang berisi instruksi perubahan struktur database. Perintah ini belum menerapkan perubahan tersebut ke database. Sementara itu, `migrate` menjalankan migration yang belum diterapkan ke database dan mencatat migration yang sudah dijalankan pada tabel `django_migrations`.
 

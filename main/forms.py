@@ -1,6 +1,6 @@
 from django.forms import ModelForm, TextInput, Textarea, URLInput
 
-from main.models import Project
+from main.models import BlogPost, Project
 
 
 class ProjectForm(ModelForm):
@@ -46,6 +46,30 @@ class ProjectForm(ModelForm):
             "project_image_url": URLInput(
                 attrs={
                     "placeholder": "https://drive.google.com/thumbnail?id=...&sz=w1000",
+                }
+            ),
+        }
+
+
+class BlogPostForm(ModelForm):
+    class Meta:
+        model = BlogPost
+        fields = ["title", "content"]
+        labels = {
+            "title": "Judul Blog",
+            "content": "Isi Blog",
+        }
+        widgets = {
+            "title": TextInput(
+                attrs={
+                    "placeholder": "Judul tulisan",
+                    "maxlength": 255,
+                }
+            ),
+            "content": Textarea(
+                attrs={
+                    "placeholder": "Tulis isi blogmu",
+                    "rows": 8,
                 }
             ),
         }

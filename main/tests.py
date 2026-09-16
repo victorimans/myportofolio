@@ -64,6 +64,30 @@ class MainTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "blog.html")
+        self.assertContains(response, "Tambah Blog")
+
+    def test_blog_form_page_is_accessible(self):
+        response = self.client.get(reverse("main:create_blog"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "blog_form.html")
+        self.assertContains(response, "Tambah Blog")
+        self.assertContains(response, "csrfmiddlewaretoken")
+
+    def test_blog_form_saves_post_and_redirects(self):
+        response = self.client.post(
+            reverse("main:create_blog"),
+            {
+                "title": "A blog created from the form",
+                "content": "This post was submitted without using the Admin.",
+            },
+            follow=True,
+        )
+
+        blog_post = BlogPost.objects.get(title="A blog created from the form")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, blog_post.content)
+        self.assertContains(response, "Blog baru berhasil ditambahkan!")
 
     def test_blog_page_displays_stored_post_title_and_content(self):
         blog_post = BlogPost.objects.create(

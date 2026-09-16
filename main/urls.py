@@ -1,6 +1,7 @@
 from django.urls import path
 
 from main.views import (
+    create_blog,
     create_project,
     show_blog,
     show_experience,
@@ -17,6 +18,7 @@ urlpatterns = [
     path("projects/", show_projects, name="show_projects"),
     path("projects/add/", create_project, name="create_project"),
     path("experience/", show_experience, name="show_experience"),
+    path("blog/add/", create_blog, name="create_blog"),
     path("blog/", show_blog, name="show_blog"),
     path("json/", show_json, name="show_json"),
     path("json/<uuid:id>/", show_json_by_id, name="show_json_by_id"),

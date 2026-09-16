@@ -911,6 +911,10 @@ main {
     margin-bottom: 1.5rem;
 }
 
+.blog-page-actions {
+    margin-bottom: 1.5rem;
+}
+
 .project-image {
     display: block;
     width: 100%;
@@ -920,7 +924,8 @@ main {
     border-radius: var(--radius);
 }
 
-.project-form {
+.project-form,
+.blog-form {
     width: 100%;
     max-width: 100%;
     margin-top: 1.5rem;

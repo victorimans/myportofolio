@@ -7,6 +7,10 @@
             <div class="container">
                 <h1 id="blog-heading">Blog</h1>
 
+                <p class="blog-page-actions">
+                    <a href="{% url 'main:create_blog' %}" class="button">Tambah Blog</a>
+                </p>
+
                 <div class="blog-list">
                     {% for blog_post in blog_posts %}
                         <article class="blog-post">
