@@ -115,6 +115,8 @@ class MainTest(TestCase):
         self.assertContains(response, matching_project.title)
         self.assertNotContains(response, "Unrelated Project")
         self.assertEqual(response.context["title_query"], "portfolio")
+        self.assertContains(response, 'value="portfolio"')
+        self.assertContains(response, 'name="title"')
 
     def test_blog_page_is_accessible_and_uses_blog_template(self):
         response = self.client.get(reverse("main:show_blog"))

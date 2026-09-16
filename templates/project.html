@@ -12,6 +12,20 @@
                 <a href="{% url 'main:create_project' %}" class="button">Tambah Project</a>
             </p>
 
+            <form method="get" class="project-search-form" role="search">
+                <label for="project-title-search">Cari project berdasarkan judul</label>
+                <div class="project-search-controls">
+                    <input
+                        id="project-title-search"
+                        name="title"
+                        type="search"
+                        value="{{ title_query }}"
+                        placeholder="Masukkan judul project"
+                    >
+                    <button type="submit" class="button">Cari</button>
+                </div>
+            </form>
+
             <div class="experience-grid project-grid">
                 {% for project in project_list %}
                     <article class="experience-card project-card">

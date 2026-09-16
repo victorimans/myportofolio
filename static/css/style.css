@@ -911,6 +911,37 @@ main {
     margin-bottom: 1.5rem;
 }
 
+.project-search-form {
+    margin-bottom: 1.5rem;
+}
+
+.project-search-form label {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: var(--brown);
+    font-weight: 700;
+}
+
+.project-search-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.project-search-controls input {
+    flex: 1 1 16rem;
+    min-width: 0;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    font: inherit;
+}
+
+.project-search-controls input:focus {
+    outline: 2px solid var(--accent);
+    border-color: var(--accent);
+}
+
 .blog-page-actions {
     margin-bottom: 1.5rem;
 }
