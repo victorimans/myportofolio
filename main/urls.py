@@ -5,7 +5,7 @@ from main.views import (
     create_project,
     show_blog,
     show_experience,
-    show_json,
+    get_projects_json,
     show_json_by_id,
     show_main,
     show_projects,
@@ -20,6 +20,6 @@ urlpatterns = [
     path("experience/", show_experience, name="show_experience"),
     path("blog/add/", create_blog, name="create_blog"),
     path("blog/", show_blog, name="show_blog"),
-    path("json/", show_json, name="show_json"),
+    path("api/projects/", get_projects_json, name="get_projects_json"),
     path("json/<uuid:id>/", show_json_by_id, name="show_json_by_id"),
 ]

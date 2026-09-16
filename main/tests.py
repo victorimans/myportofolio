@@ -1,10 +1,12 @@
+import json
+
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from main.models import BlogPost, Experience
+from main.models import BlogPost, Experience, Project
 
 
 class MainTest(TestCase):
@@ -58,6 +60,61 @@ class MainTest(TestCase):
         self.assertFalse(self.experience.is_ongoing)
         self.assertContains(response, "Selesai")
         self.assertNotContains(response, "Sedang berlangsung")
+
+    def test_projects_json_endpoint_returns_all_projects(self):
+        project = Project.objects.create(
+            title="Portfolio Website",
+            description="A Django portfolio website.",
+            tech_stack="Django, Python",
+        )
+
+        response = self.client.get(reverse("main:get_projects_json"))
+        data = json.loads(response.content)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(data[0]["pk"], str(project.pk))
+
+    def test_projects_json_endpoint_filters_by_title(self):
+        matching_project = Project.objects.create(
+            title="Portfolio Website",
+            description="A Django portfolio website.",
+            tech_stack="Django, Python",
+        )
+        Project.objects.create(
+            title="Unrelated Project",
+            description="Another project.",
+            tech_stack="Python",
+        )
+
+        response = self.client.get(reverse("main:get_projects_json"), {"title": "portfolio"})
+        data = json.loads(response.content)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["pk"], str(matching_project.pk))
+
+    def test_projects_page_uses_filtered_json_response(self):
+        matching_project = Project.objects.create(
+            title="Portfolio Website",
+            description="A Django portfolio website.",
+            tech_stack="Django, Python",
+        )
+        Project.objects.create(
+            title="Unrelated Project",
+            description="Another project.",
+            tech_stack="Python",
+        )
+
+        response = self.client.get(
+            reverse("main:show_projects"),
+            {"title": "portfolio"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, matching_project.title)
+        self.assertNotContains(response, "Unrelated Project")
+        self.assertEqual(response.context["title_query"], "portfolio")
 
     def test_blog_page_is_accessible_and_uses_blog_template(self):
         response = self.client.get(reverse("main:show_blog"))
