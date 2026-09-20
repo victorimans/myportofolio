@@ -130,10 +130,57 @@ def create_blog(request):
     return render(request, "blog_form.html", context)
 
 
-@require_GET
-def show_blog(request):
+@require_http_methods(["GET", "POST"])
+def update_blog(request, id):
+    blog_post = get_object_or_404(BlogPost, pk=id)
+    form = BlogPostForm(request.POST or None, instance=blog_post)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Blog berhasil diperbarui!")
+        return redirect("main:show_blog")
+
     context = {
         "name": "Victoriano Iman Santosa",
-        "blog_posts": BlogPost.objects.order_by("-created_at", "-id"),
+        "form": form,
+    }
+    return render(request, "blog_form.html", context)
+
+
+@require_POST
+def delete_blog(request, id):
+    blog_post = get_object_or_404(BlogPost, pk=id)
+    blog_post.delete()
+    messages.success(request, "Blog berhasil dihapus!")
+    return redirect("main:show_blog")
+
+
+@require_GET
+def get_blog_json(request):
+    blog_posts = BlogPost.objects.order_by("-created_at", "-id")
+    blog_posts_json = serializers.serialize("json", blog_posts)
+    return HttpResponse(blog_posts_json, content_type="application/json")
+
+
+@require_GET
+def show_blog_json_by_id(request, id):
+    blog_post = get_object_or_404(BlogPost, pk=id)
+    data = serializers.serialize("json", [blog_post])
+    return HttpResponse(data, content_type="application/json")
+
+
+@require_GET
+def show_blog(request):
+    json_response = get_blog_json(request)
+    blog_posts = serializers.deserialize(
+        "json",
+        json_response.content.decode("utf-8"),
+    )
+    blog_posts = [blog_post.object for blog_post in blog_posts]
+
+    context = {
+        "name": "Victoriano Iman Santosa",
+        "blog_posts": blog_posts,
     }
     return render(request, "blog.html", context)
+
