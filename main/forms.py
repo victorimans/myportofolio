@@ -67,10 +67,12 @@ class ProjectForm(ModelForm):
 class BlogPostForm(ModelForm):
     class Meta:
         model = BlogPost
-        fields = ["title", "content"]
+        fields = ["title", "content", "category", "picture_link"]
         labels = {
             "title": "Judul Blog",
             "content": "Isi Blog",
+            "category": "Kategori Blog",
+            "picture_link": "Link Gambar",
         }
         widgets = {
             "title": TextInput(
@@ -83,6 +85,16 @@ class BlogPostForm(ModelForm):
                 attrs={
                     "placeholder": "Tulis isi blogmu",
                     "rows": 8,
+                }
+            ),
+            "category": forms.Select(
+                attrs={
+                    "placeholder": "AI, DSA, Web Development",
+                }
+            ),
+            "picture_link": URLInput(
+                attrs={
+                    "placeholder": "https://example.com/gambar-blog.jpg",
                 }
             ),
         }
