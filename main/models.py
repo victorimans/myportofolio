@@ -47,8 +47,22 @@ class Mahasiswa(models.Model):
 
 
 class BlogPost(models.Model):
+    BLOG_CATEGORY_CHOICES = [
+        ("ai", "AI"),
+        ("dsa", "DSA"),
+        ("web-development", "Web Development"),
+        ("career", "Career"),
+        ("personal", "Personal"),
+    ]
+
     title = models.CharField(max_length=255)
     content = models.TextField()
+    category = models.CharField(
+        max_length=30,
+        choices=BLOG_CATEGORY_CHOICES,
+        default="ai",
+    )
+    picture_link = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

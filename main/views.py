@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.core import serializers
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from main.forms import BlogPostForm, ProjectForm
 from main.models import BlogPost, Experience, Project
@@ -24,6 +24,7 @@ def _has_valid_write_secret(request):
     )
 
 
+@require_GET
 def show_main(request):
     context = {
         "name": "Victoriano Iman Santosa",
@@ -36,6 +37,7 @@ def show_main(request):
     return render(request, "index.html", context)
 
 
+@require_GET
 def show_experience(request):
     context = {
         "name": "Victoriano Iman Santosa",
@@ -44,6 +46,7 @@ def show_experience(request):
     return render(request, "experience.html", context)
 
 
+@require_GET
 def show_projects(request):
     json_response = get_projects_json(request)
     projects = serializers.deserialize(
@@ -61,6 +64,7 @@ def show_projects(request):
     return render(request, "project.html", context)
 
 
+@require_http_methods(["GET", "POST"])
 def create_project(request):
     form = ProjectForm(request.POST or None)
 
@@ -91,6 +95,7 @@ def delete_project(request, id):
     return redirect("main:show_projects")
 
 
+@require_GET
 def get_projects_json(request):
     title_query = request.GET.get("title", "").strip()
     projects = Project.objects.all()
@@ -102,12 +107,14 @@ def get_projects_json(request):
     return HttpResponse(projects_json, content_type="application/json")
 
 
+@require_GET
 def show_json_by_id(request, id):
     project = get_object_or_404(Project, pk=id)
     data = serializers.serialize("json", [project])
     return HttpResponse(data, content_type="application/json")
 
 
+@require_http_methods(["GET", "POST"])
 def create_blog(request):
     form = BlogPostForm(request.POST or None)
 
@@ -123,6 +130,7 @@ def create_blog(request):
     return render(request, "blog_form.html", context)
 
 
+@require_GET
 def show_blog(request):
     context = {
         "name": "Victoriano Iman Santosa",
