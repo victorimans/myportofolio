@@ -1004,17 +1004,21 @@ main {
 }
 
 .form-group input,
+.form-group select,
 .form-group textarea {
     width: 100%;
     box-sizing: border-box;
     padding: 0.7rem;
     border: 1px solid var(--accent);
     border-radius: var(--radius);
+    background: var(--paper);
+    color: var(--ink);
     font: inherit;
     transition: border-color 0.2s ease, outline-color 0.2s ease;
 }
 
 .form-group input:focus,
+.form-group select:focus,
 .form-group textarea:focus {
     outline: 2px solid var(--accent);
     border-color: var(--accent);
@@ -1095,16 +1099,50 @@ main {
     background: rgba(255, 250, 242, 0.74);
 }
 
-.blog-post-date {
+.blog-post-image {
+    display: block;
+    width: 100%;
+    max-height: 22rem;
+    margin-bottom: 1.25rem;
+    border-radius: var(--radius);
+    object-fit: cover;
+}
+
+.blog-post-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.blog-post-date,
+.blog-post-category {
     margin-bottom: 0.5rem;
     color: var(--accent-dark);
     font-size: 0.8rem;
     font-weight: 700;
     letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.blog-post-category {
+    margin-bottom: 0;
+    color: var(--brown);
+}
+
+.blog-post-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.blog-post-actions form {
+    margin: 0;
 }
 
 .blog-post h2 {
-    margin-bottom: 1rem;
+    margin: 1rem 0;
     font-size: clamp(1.35rem, 3vw, 1.75rem);
     font-weight: 700;
 }
@@ -1112,6 +1150,11 @@ main {
 .blog-post-content {
     color: var(--muted);
     line-height: 1.75;
+}
+
+.button-small {
+    padding: 0.45rem 0.7rem;
+    font-size: 0.85rem;
 }
 
 .blog-post-content p:last-child {
@@ -1321,6 +1364,14 @@ main {
 
     .channel-group h3 {
         min-height: auto;
+    }
+
+    .blog-post-header {
+        flex-direction: column;
+    }
+
+    .blog-post-actions {
+        justify-content: flex-start;
     }
 
     .footer-content {

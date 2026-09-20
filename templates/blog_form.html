@@ -1,13 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}Add Blog - {{ name }}{% endblock %}
+{% block title %}{{ form_title|default:"Add Blog" }} - {{ name }}{% endblock %}
 
 {% block content %}
     <section class="blog-section" aria-labelledby="blog-form-heading">
         <div class="container">
-            <h1 id="blog-form-heading">Add New Blog</h1>
+            <h1 id="blog-form-heading">{{ form_title|default:"Add New Blog" }}</h1>
 
-            <form method="post" action="{% url 'main:create_blog' %}" class="blog-form">
+            <form
+                method="post"
+                action="{% if is_update %}{% url 'main:update_blog' blog_post.id %}{% else %}{% url 'main:create_blog' %}{% endif %}"
+                class="blog-form"
+            >
                 {% csrf_token %}
                 {% for field in form %}
                     <div class="form-group">
@@ -18,7 +22,7 @@
                         {% endfor %}
                     </div>
                 {% endfor %}
-                <button type="submit" class="button">Tambah Blog</button>
+                <button type="submit" class="button">{{ submit_label|default:"Tambah Blog" }}</button>
                 <a href="{% url 'main:show_blog' %}" class="button button-secondary">Batal</a>
             </form>
         </div>

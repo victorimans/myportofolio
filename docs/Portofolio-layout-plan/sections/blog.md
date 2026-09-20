@@ -1,6 +1,6 @@
 # Blog Section
 
-**Status:** Specification updated; implementation completion pending
+**Status:** Implementation complete; runtime verification complete; live visual verification pending
 
 **Parent plan:** [Portfolio layout plan](../portfolio-layout-plan.md)
 
@@ -179,23 +179,23 @@ At minimum, add tests for:
 
 ### Required completion work
 
-- [ ] Create and apply a migration for `category` and `picture_link`.
-- [ ] Register `update_blog` in `main/urls.py` at `/blog/<int:id>/edit/`.
-- [ ] Register `delete_blog` in `main/urls.py` at `/blog/<int:id>/delete/`.
-- [ ] Register `get_blog_json` in `main/urls.py` at `/api/blog/`.
-- [ ] Make `blog_form.html` use a dynamic create/update action, heading, and submit label.
-- [ ] Add update controls for each rendered BlogPost.
-- [ ] Add CSRF-protected delete buttons for each rendered BlogPost.
-- [ ] Render category and the optional picture link/image on the Blog page.
-- [ ] Keep the automatic `id` and `created_at` fields out of the form.
-- [ ] Add tests for create, update, delete, JSON, deserialization, field rendering, template inheritance, and schema consistency.
-- [ ] Run `python manage.py check` successfully.
-- [ ] Run `python manage.py test` successfully.
-- [ ] Run `python manage.py runserver` and confirm startup without errors.
-- [ ] Verify that an Admin-created post appears on `/blog/`.
-- [ ] Verify that a post created through `/blog/add/` appears on `/blog/`.
-- [ ] Verify that a post updated through `/blog/<int:id>/edit/` shows its new values.
-- [ ] Verify that a post deleted through its button no longer appears on `/blog/`.
+- [x] Create and apply a migration for `category` and `picture_link`.
+- [x] Register `update_blog` in `main/urls.py` at `/blog/<int:id>/edit/`.
+- [x] Register `delete_blog` in `main/urls.py` at `/blog/<int:id>/delete/`.
+- [x] Register `get_blog_json` in `main/urls.py` at `/api/blog/`.
+- [x] Make `blog_form.html` use a dynamic create/update action, heading, and submit label.
+- [x] Add update controls for each rendered BlogPost.
+- [x] Add CSRF-protected delete buttons for each rendered BlogPost.
+- [x] Render category and the optional picture link/image on the Blog page.
+- [x] Keep the automatic `id` and `created_at` fields out of the form.
+- [x] Add tests for create, update, delete, JSON, deserialization, field rendering, template inheritance, and schema consistency.
+- [x] Run `python manage.py check` successfully.
+- [x] Run `python manage.py test` successfully.
+- [x] Run `python manage.py runserver` and confirm startup without errors.
+- [x] Verify that an Admin-created post appears on `/blog/`.
+- [x] Verify that a post created through `/blog/add/` appears on `/blog/`.
+- [x] Verify that a post updated through `/blog/<int:id>/edit/` shows its new values.
+- [x] Verify that a post deleted through its button no longer appears on `/blog/`.
 
 ## Acceptance scenarios
 
@@ -256,18 +256,19 @@ The rendered Blog list and form pages inherit the shared document structure, nav
 
 ## Verification log
 
-The previous verification log covered only the earlier create/list Blog scope and is not sufficient for this expanded specification. In particular, it did not verify the new update, delete, public JSON route, complete form workflow, template controls, or the migration for `category` and `picture_link`.
+Runtime verification on 2026-09-20:
 
-Current repository facts requiring verification after implementation:
-
-- [x] The Blog model and form currently declare `category` and `picture_link`.
-- [x] `show_blog` currently performs JSON serialization and deserialization before rendering.
-- [x] `blog.html` and `blog_form.html` currently extend `base.html`.
-- [ ] The database migration state matches the current BlogPost model.
-- [ ] Update, delete, and JSON routes are registered and reachable.
-- [ ] The form action and controls support both create and update.
-- [ ] Each post has a working CSRF-protected delete button.
-- [ ] Category and optional image data are rendered correctly.
-- [ ] Expanded automated tests pass.
-- [ ] `python manage.py runserver` starts without errors after the expanded implementation.
-- [ ] Live desktop/mobile behavior remains unverified unless a browser target is available.
+- [x] The Blog model and form declare `category` and `picture_link`.
+- [x] Migration `0004_blogpost_category_picture_link` was applied successfully.
+- [x] `show_blog` performs JSON serialization and deserialization before rendering.
+- [x] `blog.html` and `blog_form.html` extend `base.html`.
+- [x] Update, delete, and JSON routes are registered and reachable.
+- [x] The form action, heading, and submit label support both create and update.
+- [x] Each post has a working CSRF-protected delete button.
+- [x] Category and optional image data are rendered correctly.
+- [x] The expanded test suite passed with 30 tests.
+- [x] `python manage.py check` passed with no issues.
+- [x] `python manage.py makemigrations --check --dry-run` reported no changes.
+- [x] `python manage.py runserver` started successfully and `/blog/` returned HTTP 200.
+- [x] Admin, create, update, and delete workflows are covered by automated tests.
+- [ ] Live desktop/mobile behavior remains unverified because no browser target is available.

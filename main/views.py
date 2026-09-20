@@ -126,6 +126,9 @@ def create_blog(request):
     context = {
         "name": "Victoriano Iman Santosa",
         "form": form,
+        "form_title": "Add New Blog",
+        "submit_label": "Tambah Blog",
+        "is_update": False,
     }
     return render(request, "blog_form.html", context)
 
@@ -143,6 +146,10 @@ def update_blog(request, id):
     context = {
         "name": "Victoriano Iman Santosa",
         "form": form,
+        "blog_post": blog_post,
+        "form_title": "Edit Blog",
+        "submit_label": "Simpan Perubahan",
+        "is_update": True,
     }
     return render(request, "blog_form.html", context)
 

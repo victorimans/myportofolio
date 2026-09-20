@@ -1,9 +1,13 @@
 import json
+from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.core import serializers
+from django.db import connection
+from django.http import HttpResponse
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -201,6 +205,7 @@ class MainTest(TestCase):
             {
                 "title": "A blog created from the form",
                 "content": "This post was submitted without using the Admin.",
+                "category": "ai",
             },
             follow=True,
         )
@@ -209,6 +214,174 @@ class MainTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, blog_post.content)
         self.assertContains(response, "Blog baru berhasil ditambahkan!")
+
+    def test_blog_form_renders_all_editable_fields(self):
+        response = self.client.get(reverse("main:create_blog"))
+
+        for field_name in ("title", "content", "category", "picture_link"):
+            self.assertContains(response, f'name="{field_name}"')
+        self.assertNotContains(response, 'name="created_at"')
+        self.assertNotContains(response, 'name="id"')
+
+    def test_blog_update_form_prefills_and_updates_post(self):
+        blog_post = BlogPost.objects.create(
+            title="Original title",
+            content="Original content",
+            category="career",
+            picture_link="https://example.com/original.jpg",
+        )
+        response = self.client.get(reverse("main:update_blog", args=[blog_post.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "blog_form.html")
+        self.assertContains(response, "Edit Blog")
+        self.assertContains(response, f'action="{reverse("main:update_blog", args=[blog_post.id])}"')
+        self.assertContains(response, 'value="Original title"')
+        self.assertContains(response, "Original content")
+
+        created_at = blog_post.created_at
+        response = self.client.post(
+            reverse("main:update_blog", args=[blog_post.id]),
+            {
+                "title": "Updated title",
+                "content": "Updated content",
+                "category": "dsa",
+                "picture_link": "https://example.com/updated.jpg",
+            },
+            follow=True,
+        )
+
+        blog_post.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(blog_post.created_at, created_at)
+        self.assertEqual(blog_post.title, "Updated title")
+        self.assertEqual(blog_post.category, "dsa")
+        self.assertEqual(blog_post.picture_link, "https://example.com/updated.jpg")
+        self.assertContains(response, "Updated title")
+        self.assertContains(response, "Blog berhasil diperbarui!")
+
+    def test_delete_blog_removes_post_and_rejects_get(self):
+        blog_post = BlogPost.objects.create(
+            title="Blog to delete",
+            content="This post should be removed.",
+        )
+
+        response = self.client.get(reverse("main:delete_blog", args=[blog_post.id]))
+
+        self.assertEqual(response.status_code, 405)
+        self.assertTrue(BlogPost.objects.filter(pk=blog_post.id).exists())
+
+        csrf_client = Client(enforce_csrf_checks=True)
+        response = csrf_client.post(
+            reverse("main:delete_blog", args=[blog_post.id]),
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(BlogPost.objects.filter(pk=blog_post.id).exists())
+
+        response = csrf_client.get(reverse("main:show_blog"))
+        csrf_token = response.cookies["csrftoken"].value
+        response = csrf_client.post(
+            reverse("main:delete_blog", args=[blog_post.id]),
+            {"csrfmiddlewaretoken": csrf_token},
+            HTTP_X_CSRFTOKEN=csrf_token,
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(BlogPost.objects.filter(pk=blog_post.id).exists())
+        self.assertContains(response, "Blog berhasil dihapus!")
+
+    def test_blog_json_endpoint_returns_ordered_complete_data(self):
+        older_post = BlogPost.objects.create(
+            title="Older JSON blog",
+            content="Older JSON content",
+            category="career",
+        )
+        newer_post = BlogPost.objects.create(
+            title="Newer JSON blog",
+            content="Newer JSON content",
+            category="web-development",
+            picture_link="https://example.com/blog.jpg",
+        )
+        timestamp = timezone.now()
+        BlogPost.objects.filter(pk__in=[older_post.pk, newer_post.pk]).update(created_at=timestamp)
+
+        response = self.client.get(reverse("main:get_blog_json"))
+        data = json.loads(response.content)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual([item["pk"] for item in data[:2]], [newer_post.pk, older_post.pk])
+        self.assertEqual(data[0]["fields"]["title"], "Newer JSON blog")
+        self.assertEqual(data[0]["fields"]["content"], "Newer JSON content")
+        self.assertEqual(data[0]["fields"]["category"], "web-development")
+        self.assertEqual(data[0]["fields"]["picture_link"], "https://example.com/blog.jpg")
+        self.assertEqual(
+            data[0]["fields"]["created_at"],
+            newer_post.created_at.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+        )
+
+    def test_blogpost_database_schema_contains_model_fields(self):
+        column_names = {
+            column.name
+            for column in connection.introspection.get_table_description(
+                connection.cursor(),
+                BlogPost._meta.db_table,
+            )
+        }
+
+        self.assertTrue({"title", "content", "category", "picture_link", "created_at"}.issubset(column_names))
+
+    def test_blog_templates_use_one_root_document(self):
+        list_response = self.client.get(reverse("main:show_blog"))
+        form_response = self.client.get(reverse("main:create_blog"))
+
+        self.assertEqual(list_response.content.decode().count("<!DOCTYPE html>"), 1)
+        self.assertEqual(form_response.content.decode().count("<!DOCTYPE html>"), 1)
+        self.assertContains(list_response, 'href="/static/css/style.css"')
+        self.assertContains(form_response, 'href="/static/css/style.css"')
+
+    def test_blog_page_displays_category_and_picture(self):
+        blog_post = BlogPost.objects.create(
+            title="A categorized post",
+            content="Post content",
+            category="ai",
+            picture_link="https://example.com/ai.jpg",
+        )
+
+        response = self.client.get(reverse("main:show_blog"))
+
+        self.assertContains(response, blog_post.title)
+        self.assertContains(response, "AI")
+        self.assertContains(response, blog_post.picture_link)
+        expected_date = f"{blog_post.created_at.day} {blog_post.created_at.strftime('%B %Y')}"
+        self.assertContains(response, expected_date)
+        self.assertContains(response, f'alt="Gambar {blog_post.title}"')
+        self.assertContains(response, f'aria-label="Edit blog: {blog_post.title}"')
+        self.assertContains(response, f'aria-label="Delete blog: {blog_post.title}"')
+        self.assertContains(response, reverse("main:update_blog", args=[blog_post.id]))
+        self.assertContains(response, reverse("main:delete_blog", args=[blog_post.id]))
+
+    def test_blog_page_renders_deserialized_json_objects(self):
+        blog_post = BlogPost.objects.create(
+            title="JSON-backed title",
+            content="JSON-backed content",
+            category="personal",
+        )
+        json_response = HttpResponse(
+            serializers.serialize("json", [blog_post]),
+            content_type="application/json",
+        )
+
+        with patch("main.views.get_blog_json", return_value=json_response) as get_blog_json:
+            response = self.client.get(reverse("main:show_blog"))
+
+        get_blog_json.assert_called_once()
+        self.assertContains(response, "JSON-backed title")
+        self.assertContains(response, "JSON-backed content")
+        self.assertEqual(response.context["blog_posts"][0].__class__, BlogPost)
 
     def test_blog_page_displays_stored_post_title_and_content(self):
         blog_post = BlogPost.objects.create(
@@ -273,6 +446,7 @@ class MainTest(TestCase):
             {
                 "title": "Admin-created post",
                 "content": "Content entered through Django Admin.",
+                "category": "ai",
                 "_save": "Save",
             },
         )

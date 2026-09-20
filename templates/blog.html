@@ -14,7 +14,22 @@
                 <div class="blog-list">
                     {% for blog_post in blog_posts %}
                         <article class="blog-post">
-                            <p class="blog-post-date">{{ blog_post.created_at|date:"j F Y" }}</p>
+                            {% if blog_post.picture_link %}
+                                <img class="blog-post-image" src="{{ blog_post.picture_link }}" alt="Gambar {{ blog_post.title }}">
+                            {% endif %}
+                            <div class="blog-post-header">
+                                <div>
+                                    <p class="blog-post-date">{{ blog_post.created_at|date:"j F Y" }}</p>
+                                    <p class="blog-post-category">{{ blog_post.get_category_display }}</p>
+                                </div>
+                                <div class="blog-post-actions">
+                                    <a href="{% url 'main:update_blog' blog_post.id %}" class="button button-small" aria-label="Edit blog: {{ blog_post.title }}">Edit Blog</a>
+                                    <form method="post" action="{% url 'main:delete_blog' blog_post.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="button button-secondary button-small" aria-label="Delete blog: {{ blog_post.title }}">Hapus Blog</button>
+                                    </form>
+                                </div>
+                            </div>
                             <h2>{{ blog_post.title }}</h2>
                             <div class="blog-post-content">{{ blog_post.content|linebreaks }}</div>
                         </article>
