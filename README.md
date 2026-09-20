@@ -122,3 +122,15 @@ Cara ini juga membuat aplikasi lebih mudah dipelihara dan dikembangkan. Satu tem
 3. `makemigrations` dan `migrate` memiliki fungsi yang berbeda. Perintah `makemigrations` membaca perubahan pada model lalu membuat file migration yang berisi instruksi perubahan struktur database. Perintah ini belum menerapkan perubahan tersebut ke database. Sementara itu, `migrate` menjalankan migration yang belum diterapkan ke database dan mencatat migration yang sudah dijalankan pada tabel `django_migrations`.
 
 Contohnya pada Tugas 2, saya menambahkan model `BlogPost` dengan field `title`, `content`, dan `created_at`. Perubahan model tersebut menghasilkan file `main/migrations/0002_blogpost.py`. Setelah file migration dibuat dengan `python manage.py makemigrations`, migration perlu diterapkan menggunakan `python manage.py migrate` agar tabel `main_blogpost` benar-benar tersedia di database. Contoh perubahan berikutnya adalah menambahkan field `published_at` pada `BlogPost`; perubahan itu juga mengharuskan saya menjalankan kedua perintah tersebut secara berurutan.
+
+
+## AI Disclosure Tugas 3
+
+Saya menggunakan model AI ChatGPT Plus dengan bantuan OpenCode dalam mengembangkan modul pada Tugas 3. Bagian `views`, `forms`, `urls`, dan `models` saya buat secara manual. Untuk bagian lainnya, saya menggunakan AI dengan terlebih dahulu membuat dokumentasi dan spesifikasi yang menjelaskan kebutuhan, struktur, batasan, serta alur fitur yang harus dibuat. Setelah itu, saya meminta AI untuk mengimplementasikan bagian tersebut sesuai dengan dokumentasi dan spesifikasi yang telah disusun.
+
+Setelah proses implementasi selesai, saya melakukan pemeriksaan terhadap hasil kode untuk memastikan kesesuaiannya dengan spesifikasi, struktur proyek, dan kebutuhan fitur. Saya juga melakukan pengecekan terhadap alur aplikasi serta memperbaiki bagian yang belum sesuai. Dengan demikian, AI digunakan sebagai alat bantu implementasi, sedangkan penyusunan bagian utama, pengambilan keputusan, pemeriksaan, dan tanggung jawab akhir terhadap kode tetap saya lakukan sendiri.
+
+Dikarenakan saya menggunakan OPENCODE yang merupakan open source AI coding agent, dan tidak bisa membagikan hasil chat maka saya telah mencantumkan chat export saya pada [docs/AI Disclosure/Tugas 3](/docs/AI%20Disclosure/Tugas%203/session-ses_f428.md) sebagai bentuk keterbukaan saya.
+
+
+
