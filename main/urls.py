@@ -16,6 +16,7 @@ from main.views import (
     show_json_by_id,
     show_main,
     show_projects,
+    toggle_star,
     update_blog,
 )
 
@@ -30,6 +31,7 @@ urlpatterns = [
     path("projects/", show_projects, name="show_projects"),
     path("projects/add/", create_project, name="create_project"),
     path("projects/<uuid:id>/delete/", delete_project, name="delete_project"),
+    path("projects/<uuid:project_id>/star/", toggle_star, name="toggle_star"),
     path("experience/", show_experience, name="show_experience"),
     path("blog/add/", create_blog, name="create_blog"),
     path("blog/<int:id>/edit/", update_blog, name="update_blog"),

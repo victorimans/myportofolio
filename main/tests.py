@@ -1,20 +1,18 @@
 import json
 from unittest.mock import patch
 
-from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.core import serializers
 from django.db import connection
 from django.http import HttpResponse
-from django.test import Client, TestCase, override_settings
+from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from main.models import BlogPost, Experience, Project
 
 
-@override_settings(PORTFOLIO_WRITE_SECRET="test-write-secret")
 class MainTest(TestCase):
     def setUp(self):
         self.experience = Experience.objects.create(
@@ -124,65 +122,69 @@ class MainTest(TestCase):
         self.assertContains(response, 'value="portfolio"')
         self.assertContains(response, 'name="title"')
 
-    def test_delete_project_removes_project_and_redirects(self):
+    def test_project_writes_require_superuser(self):
         project = Project.objects.create(
-            title="Project to delete",
-            description="This project will be removed.",
-            tech_stack="Django",
+            title="Protected project", description="Keep this project.", tech_stack="Django"
         )
+        add_url = reverse("main:create_project")
+        delete_url = reverse("main:delete_project", args=[project.id])
+        payload = {"title": "New project", "description": "New description", "tech_stack": "Django"}
 
-        response = self.client.post(
-            reverse("main:delete_project", args=[project.id]),
-            {"secret": "test-write-secret"},
-            follow=True,
-        )
+        for url, method in ((add_url, "get"), (add_url, "post"), (delete_url, "post")):
+            response = getattr(self.client, method)(url, payload if method == "post" else None)
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.url, f"/login/?next={url}")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(Project.objects.filter(pk=project.id).exists())
-        self.assertContains(response, "Proyek berhasil dihapus!")
+        user = get_user_model().objects.create_user(username="member", password="password")
+        self.client.force_login(user)
+        for url, method in ((add_url, "get"), (add_url, "post"), (delete_url, "post")):
+            self.assertEqual(getattr(self.client, method)(url, payload).status_code, 403)
+        self.assertFalse(Project.objects.filter(title="New project").exists())
+        self.assertTrue(Project.objects.filter(pk=project.pk).exists())
 
-    def test_project_form_requires_write_secret(self):
-        response = self.client.post(
-            reverse("main:create_project"),
-            {
-                "title": "Protected project",
-                "description": "This should not be saved without the secret.",
-                "tech_stack": "Django",
-            },
-        )
+        owner = get_user_model().objects.create_superuser(username="owner", password="password")
+        self.client.force_login(owner)
+        self.assertEqual(self.client.get(add_url).status_code, 200)
+        self.assertEqual(self.client.post(add_url, payload).status_code, 302)
+        self.assertTrue(Project.objects.filter(title="New project").exists())
+        self.assertEqual(self.client.get(delete_url).status_code, 405)
+        self.assertEqual(self.client.post(delete_url).status_code, 302)
+        self.assertFalse(Project.objects.filter(pk=project.pk).exists())
 
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(Project.objects.filter(title="Protected project").exists())
-        self.assertContains(response, "Kode rahasia tidak valid.")
+    def test_star_requires_login_and_toggles_only_on_post(self):
+        project = Project.objects.create(title="Starred", description="A project.", tech_stack="Django")
+        url = reverse("main:toggle_star", args=[project.id])
+        response = self.client.post(url)
+        self.assertEqual(response.url, f"/login/?next={url}")
+        self.assertEqual(project.starred_by.count(), 0)
 
-    def test_project_form_accepts_write_secret_header(self):
-        response = self.client.post(
-            reverse("main:create_project"),
-            {
-                "title": "Protected project",
-                "description": "This should be saved with the header.",
-                "tech_stack": "Django",
-            },
-            HTTP_X_PORTFOLIO_WRITE_SECRET=settings.PORTFOLIO_WRITE_SECRET,
-            follow=True,
-        )
+        user = get_user_model().objects.create_user(username="member", password="password")
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(url).status_code, 302)
+        self.assertEqual(project.starred_by.count(), 0)
+        self.client.post(url)
+        self.assertEqual(project.starred_by.count(), 1)
+        self.assertContains(self.client.get(reverse("main:show_projects")), "Unstar")
+        self.client.post(url)
+        self.assertEqual(project.starred_by.count(), 0)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(Project.objects.filter(title="Protected project").exists())
-
-    def test_delete_project_rejects_get_requests(self):
-        project = Project.objects.create(
-            title="Project kept on get",
-            description="GET must not delete this project.",
-            tech_stack="Django",
-        )
-
-        response = self.client.get(
-            reverse("main:delete_project", args=[project.id]),
-        )
-
-        self.assertEqual(response.status_code, 405)
-        self.assertTrue(Project.objects.filter(pk=project.id).exists())
+    def test_project_page_hides_owner_controls_and_api_uses_usernames(self):
+        project = Project.objects.create(title="Public project", description="A project.", tech_stack="Django")
+        user = get_user_model().objects.create_user(username="member", password="password")
+        project.starred_by.add(user)
+        page = reverse("main:show_projects")
+        self.assertNotContains(self.client.get(page), "Hapus Project")
+        self.assertNotContains(self.client.get(page), "Tambah Project")
+        self.assertContains(self.client.get(page), "Star")
+        self.client.force_login(user)
+        self.assertNotContains(self.client.get(page), "Hapus Project")
+        self.assertContains(self.client.get(page), "Unstar")
+        owner = get_user_model().objects.create_superuser(username="owner", password="password")
+        self.client.force_login(owner)
+        self.assertContains(self.client.get(page), "Hapus Project")
+        self.assertContains(self.client.get(page), "Tambah Project")
+        data = json.loads(self.client.get(reverse("main:get_projects_json")).content)
+        self.assertEqual(data[0]["fields"]["starred_by"], [["member"]])
 
     def test_blog_page_is_accessible_and_uses_blog_template(self):
         response = self.client.get(reverse("main:show_blog"))

@@ -8,9 +8,11 @@
             <p class="section-kicker">Karya yang saya bangun</p>
             <h1 id="projects-heading">Projects</h1>
 
-            <p class="project-page-actions">
-                <a href="{% url 'main:create_project' %}" class="button">Tambah Project</a>
-            </p>
+            {% if user.is_superuser %}
+                <p class="project-page-actions">
+                    <a href="{% url 'main:create_project' %}" class="button">Tambah Project</a>
+                </p>
+            {% endif %}
 
             <form method="get" class="project-search-form" role="search">
                 <label for="project-title-search">Cari project berdasarkan judul</label>
@@ -42,19 +44,22 @@
                             </p>
                         {% endif %}
 
-                        <form method="post" action="{% url 'main:delete_project' project.id %}" class="project-delete-form">
+                        <form method="post" action="{% url 'main:toggle_star' project.id %}" class="star-form">
                             {% csrf_token %}
-                            <label for="project-delete-secret-{{ project.id }}">Kode rahasia</label>
-                            <input
-                                id="project-delete-secret-{{ project.id }}"
-                                name="secret"
-                                type="password"
-                                placeholder="Kode rahasia"
-                                autocomplete="current-password"
-                                required
-                            >
-                            <button type="submit" class="button button-secondary">Hapus Project</button>
+                            <button type="submit"
+                                    class="button button-star{% if user in project.starred_by.all %} is-starred{% endif %}"
+                                    title="{% if project.starred_by.all %}Dibintangi oleh {{ project.starred_by.all|join:', ' }}{% else %}Jadilah yang pertama memberi star{% endif %}">
+                                <span aria-hidden="true">★</span>
+                                {% if user in project.starred_by.all %}Unstar{% else %}Star{% endif %}
+                                <span class="star-count">{{ project.starred_by.count }}</span>
+                            </button>
                         </form>
+                        {% if user.is_superuser %}
+                            <form method="post" action="{% url 'main:delete_project' project.id %}" class="project-delete-form">
+                                {% csrf_token %}
+                                <button type="submit" class="button button-secondary">Hapus Project</button>
+                            </form>
+                        {% endif %}
                     </article>
                 {% empty %}
                     <p class="empty-state">Belum ada proyek yang ditambahkan.</p>

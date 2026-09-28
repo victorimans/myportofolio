@@ -1,10 +1,9 @@
-import secrets
-
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.core import serializers
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
@@ -50,19 +49,6 @@ def logout_user(request):
     return redirect("main:show_main")
 
 
-def _has_valid_write_secret(request):
-    configured_secret = settings.PORTFOLIO_WRITE_SECRET
-    provided_secret = request.headers.get("X-Portfolio-Write-Secret")
-
-    if provided_secret is None:
-        provided_secret = request.POST.get("secret", "")
-
-    return bool(configured_secret) and secrets.compare_digest(
-        provided_secret,
-        configured_secret,
-    )
-
-
 @require_GET
 def show_main(request):
     context = {
@@ -103,17 +89,18 @@ def show_projects(request):
     return render(request, "project.html", context)
 
 
+@login_required(login_url="/login/")
 @require_http_methods(["GET", "POST"])
 def create_project(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+
     form = ProjectForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
-        if _has_valid_write_secret(request):
-            form.save()
-            messages.success(request, "Proyek baru berhasil ditambahkan!")
-            return redirect("main:show_projects")
-
-        form.add_error("secret", "Kode rahasia tidak valid.")
+        form.save()
+        messages.success(request, "Proyek baru berhasil ditambahkan!")
+        return redirect("main:show_projects")
 
     context = {
         "name": "Victoriano Iman Santosa",
@@ -122,15 +109,28 @@ def create_project(request):
     return render(request, "projects_form.html", context)
 
 
+@login_required(login_url="/login/")
 @require_POST
 def delete_project(request, id):
-    if not _has_valid_write_secret(request):
-        messages.error(request, "Kode rahasia tidak valid.")
-        return redirect("main:show_projects")
+    if not request.user.is_superuser:
+        raise PermissionDenied
 
     project = get_object_or_404(Project, pk=id)
     project.delete()
     messages.success(request, "Proyek berhasil dihapus!")
+    return redirect("main:show_projects")
+
+
+@login_required(login_url="/login/")
+def toggle_star(request, project_id):
+    project = get_object_or_404(Project, pk=project_id)
+
+    if request.method == "POST":
+        if project.starred_by.filter(pk=request.user.pk).exists():
+            project.starred_by.remove(request.user)
+        else:
+            project.starred_by.add(request.user)
+
     return redirect("main:show_projects")
 
 
@@ -142,7 +142,7 @@ def get_projects_json(request):
     if title_query:
         projects = projects.filter(title__icontains=title_query)
 
-    projects_json = serializers.serialize("json", projects)
+    projects_json = serializers.serialize("json", projects, use_natural_foreign_keys=True)
     return HttpResponse(projects_json, content_type="application/json")
 
 
