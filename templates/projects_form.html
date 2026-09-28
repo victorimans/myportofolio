@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Add Project - {{ name }}{% endblock %}
+{% block title %}{% if is_update %}Edit{% else %}Add{% endif %} Project - {{ name }}{% endblock %}
 
 {% block content %}
     <section class="experience-section" aria-labelledby="project-form-heading">
         <div class="container">
-            <h1 id="project-form-heading">Add New Project</h1>
+            <h1 id="project-form-heading">{% if is_update %}Edit Project{% else %}Add New Project{% endif %}</h1>
 
-            <form method="post" action="{% url 'main:create_project' %}" class="project-form">
+            <form method="post" action="{% if is_update %}{% url 'main:update_project' project.id %}{% else %}{% url 'main:create_project' %}{% endif %}" class="project-form">
                 {% csrf_token %}
                 {% for field in form %}
                     <div class="form-group">
@@ -18,7 +18,7 @@
                         {% endfor %}
                     </div>
                 {% endfor %}
-                <button type="submit" class="button">Tambah Project</button>
+                <button type="submit" class="button">{% if is_update %}Simpan Perubahan{% else %}Tambah Project{% endif %}</button>
                 <a href="{% url 'main:show_projects' %}" class="button button-secondary">Batal</a>
             </form>
         </div>

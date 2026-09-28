@@ -122,3 +122,36 @@ Cara ini juga membuat aplikasi lebih mudah dipelihara dan dikembangkan. Satu tem
 3. `makemigrations` dan `migrate` memiliki fungsi yang berbeda. Perintah `makemigrations` membaca perubahan pada model lalu membuat file migration yang berisi instruksi perubahan struktur database. Perintah ini belum menerapkan perubahan tersebut ke database. Sementara itu, `migrate` menjalankan migration yang belum diterapkan ke database dan mencatat migration yang sudah dijalankan pada tabel `django_migrations`.
 
 Contohnya pada Tugas 2, saya menambahkan model `BlogPost` dengan field `title`, `content`, dan `created_at`. Perubahan model tersebut menghasilkan file `main/migrations/0002_blogpost.py`. Setelah file migration dibuat dengan `python manage.py makemigrations`, migration perlu diterapkan menggunakan `python manage.py migrate` agar tabel `main_blogpost` benar-benar tersedia di database. Contoh perubahan berikutnya adalah menambahkan field `published_at` pada `BlogPost`; perubahan itu juga mengharuskan saya menjalankan kedua perintah tersebut secara berurutan.
+
+
+## AI Disclosure Tugas 3
+
+Saya menggunakan model AI ChatGPT Plus dengan bantuan OpenCode dalam mengembangkan modul pada Tugas 3. Bagian `views`, `forms`, `urls`, dan `models` saya buat secara manual. Untuk bagian lainnya, saya menggunakan AI dengan terlebih dahulu membuat dokumentasi dan spesifikasi yang menjelaskan kebutuhan, struktur, batasan, serta alur fitur yang harus dibuat. Setelah itu, saya meminta AI untuk mengimplementasikan bagian tersebut sesuai dengan dokumentasi dan spesifikasi yang telah disusun.
+
+Setelah proses implementasi selesai, saya melakukan pemeriksaan terhadap hasil kode untuk memastikan kesesuaiannya dengan spesifikasi, struktur proyek, dan kebutuhan fitur. Saya juga melakukan pengecekan terhadap alur aplikasi serta memperbaiki bagian yang belum sesuai. Dengan demikian, AI digunakan sebagai alat bantu implementasi, sedangkan penyusunan bagian utama, pengambilan keputusan, pemeriksaan, dan tanggung jawab akhir terhadap kode tetap saya lakukan sendiri.
+
+Dikarenakan saya menggunakan OPENCODE yang merupakan open source AI coding agent, dan tidak bisa membagikan hasil chat maka saya telah mencantumkan chat export saya pada [docs/AI Disclosure/Tugas 3](/docs/AI%20Disclosure/Tugas%203/session-ses_f428.md) sebagai bentuk keterbukaan saya.
+
+# Tugas 3
+## SOAL :
+1. Jelaskan mengapa kita menggunakan ModelForm pada Django alih-alih membuat form HTML secara manual. Selain itu, jelaskan pula mengapa kita diwajibkan menambahkan {% csrf_token %} pada form tersebut!
+
+2. Pada Tutorial 03, kita membahas format data JSON dan XML. Mengapa JSON lebih disukai dalam pengembangan aplikasi web modern dibandingkan XML?
+
+3. Jelaskan alur yang terjadi saat kamu menggunakan fungsi view untuk mengembalikan data portofoliomu dalam bentuk JSON. Mengapa kita perlu melakukan proses serialization pada model Django sebelum datanya dikembalikan?
+
+## Jawaban : 
+
+1. `ModelForm` digunakan karena dapat membuat form berdasarkan model Django secara otomatis. Dengan demikian, field, tipe data, validasi dasar, dan proses penyimpanan data ke database dapat disesuaikan dengan model tanpa harus menulis seluruh form HTML dan logika validasinya secara manual. Pada proyek ini, `ProjectForm` dan `BlogPostForm` membantu mengelola input untuk model `Project` dan `BlogPost`. Penggunaan `ModelForm` juga membuat kode lebih singkat, konsisten, mudah dipelihara, dan mengurangi kemungkinan ketidaksesuaian antara form dengan model.
+
+`{% csrf_token %}` wajib ditambahkan pada form yang menggunakan metode `POST` untuk melindungi aplikasi dari serangan Cross-Site Request Forgery (CSRF). Serangan ini dapat membuat pengguna yang sedang login mengirimkan permintaan tanpa sepengetahuannya. Token CSRF memastikan bahwa permintaan tersebut benar-benar berasal dari form yang dibuat oleh aplikasi. Django akan memeriksa token tersebut sebelum memproses data, sehingga permintaan POST tanpa token yang valid akan ditolak.
+
+2. JSON lebih sering digunakan dalam pengembangan aplikasi web modern karena struktur sintaksnya lebih ringkas, mudah dibaca, dan lebih ringan dibandingkan XML. JSON juga lebih dekat dengan struktur data pada JavaScript, sehingga dapat langsung diproses oleh browser dan berbagai framework frontend. Selain itu, JSON didukung oleh hampir semua bahasa pemrograman dan lebih praktis digunakan dalam REST API. XML memiliki fitur yang lebih kompleks seperti atribut, namespace, dan document schema, tetapi fitur tersebut sering membuat ukuran data serta proses parsing menjadi lebih besar. Oleh karena itu, JSON lebih sesuai untuk pertukaran data web yang membutuhkan efisiensi dan kesederhanaan.
+
+3. Alur pengembalian data portofolio dalam bentuk JSON dimulai ketika pengguna mengakses URL yang terdaftar di `urls.py`, misalnya endpoint `/api/projects/`. Django mencocokkan URL tersebut dengan view `get_projects_json`. View kemudian mengambil data `Project` dari database menggunakan ORM Django. Jika terdapat parameter pencarian, data dapat difilter terlebih dahulu berdasarkan judul proyek.
+
+Setelah data diperoleh, queryset tersebut diserialisasi menggunakan `serializers.serialize("json", projects)`. Serialization adalah proses mengubah object atau queryset Django menjadi format data yang dapat dikirim melalui HTTP, dalam hal ini JSON. Hasil serialization kemudian dikembalikan menggunakan `HttpResponse` dengan `content_type="application/json"`, sehingga client dapat mengenali bahwa response tersebut berisi data JSON.
+
+Pada halaman proyek, view `show_projects` menggunakan endpoint JSON tersebut, lalu melakukan deserialization untuk mengubah data JSON kembali menjadi object Django. Object tersebut dimasukkan ke dalam context dan ditampilkan melalui template `project.html`. Dengan demikian, alurnya adalah URL mengarahkan request ke view, view mengambil data dari model, data diserialisasi menjadi JSON, JSON dikembalikan atau dideserialisasi menjadi object sesuai kebutuhan, object ditampilkan oleh template, lalu hasil akhirnya dikirimkan kembali sebagai response kepada browser.
+
+

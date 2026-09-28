@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Login - {{ name }}{% endblock %}
+
+{% block content %}
+    <section class="experience-section" aria-labelledby="login-heading">
+        <div class="container">
+            <h1 id="login-heading">Login</h1>
+
+            <form method="post" action="{% url 'main:login' %}" class="project-form">
+                {% csrf_token %}
+                {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+                {% for field in form %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}
+                            <p class="form-error">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+                <button type="submit" class="button">Login</button>
+            </form>
+            <p>Belum punya akun? <a href="{% url 'main:register' %}">Daftar di sini</a>.</p>
+        </div>
+    </section>
+{% endblock %}

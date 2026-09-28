@@ -1,17 +1,19 @@
 # Portfolio Layout Plan
 
-Status: In progress — profile, body sections, footer, Contact, and Blog implementation are present; live visual verification remains pending
+Status: In progress — layout and Projects/Blog authorization are implemented; live visual verification and deferred project cards remain pending
 
 ## Sub-plan index
 
 - [x] [About section sub-plan](sections/about.md) created and aligned with the agreed direction.
 - [x] [Skills section sub-plan](sections/skills.md) created and aligned with the agreed direction.
 - [x] [Blog section sub-plan](sections/blog.md) created and aligned with the agreed direction; implementation and runtime verification are complete.
+- [x] Blog authorization and Editor-role specification added to the [Blog sub-plan](sections/blog.md); authorization implementation remains a separate task.
+- [x] [Projects authorization and stars specification](sections/projects-authorization-and-stars.md) created with the agreed role matrix, API contract, and acceptance criteria; implementation remains a separate task.
 - [x] Create the Projects, Journey, and Contact sub-plans when those focused sessions begin.
 
 ## Progress check
 
-Last checked: 2026-09-16
+Last checked: 2026-09-28
 
 ### Done
 
@@ -42,10 +44,12 @@ Last checked: 2026-09-16
 - [ ] Add project cards; Projects intentionally remains a truthful coming-soon placeholder.
 - [x] Finish the Contact call-to-action area using the Contact redesign proposal.
 - [ ] Verify readable contrast across the current palette and the completed sections.
-- [ ] Add the future top-navigation `Download CV` item after the About work is complete and the CV PDF exists.
-- [ ] Run browser verification. Django checks and runtime verification passed on 2026-09-16; no browser target is exposed for live verification.
+- [x] Add the top-navigation `Download CV` item linking to the existing shared PDF.
+- [ ] Run browser verification. Django checks, 43 tests, migration checks and local HTTP smoke checks passed on 2026-09-28; browser integration was unavailable.
 - [x] Implement the database-backed Blog section according to the [Blog sub-plan](sections/blog.md); the migration is applied.
 - [x] Complete Blog unit-test, server-startup, and Admin workflow verification.
+- [x] Document the Projects authorization, Editor role, and star interaction contract; no feature implementation is claimed by this documentation update.
+- [x] Document the Blog authorization, Editor role, and public/Admin permission boundary; no feature implementation is claimed by this documentation update.
 
 ## Follow-up session breakdown
 
@@ -55,7 +59,7 @@ Complete the remaining work as focused sessions. Each session should update the 
    - Add the reusable section container, grid, heading, label, supporting-copy, and alternating-background styles.
    - Confirm the shared styles work at desktop and mobile widths.
 
-2. **About section** — implemented, but the current narrative is 90 words and still needs to meet the 150–220 word requirement; browser verification remains pending.
+2. **About section** — implemented with a 199-word narrative; browser verification remains pending.
    - Follow the [About sub-plan](sections/about.md) for the approved copy, Focus panel, layout, and acceptance criteria.
    - Add the About copy and supporting details.
    - Use the shared section structure and confirm the `#about` anchor lands below the fixed navbar.
@@ -68,6 +72,8 @@ Complete the remaining work as focused sessions. Each session should update the 
 4. **Projects section** — intentionally kept as a coming-soon placeholder; project cards remain deferred.
    - Add the project cards and their links/content.
    - Confirm the three-column desktop layout collapses to one column on mobile.
+
+   The coming-soon item above describes the static landing-page section. The database-backed `/projects/` feature has its separate authorization and star contract in [Projects authorization and stars](sections/projects-authorization-and-stars.md); completing one scope does not automatically complete the other.
 
 5. **Journey section** — intentionally kept as a coming-soon placeholder.
    - Add the academic, olympiad, coaching, and other journey milestones.
@@ -86,6 +92,17 @@ Complete the remaining work as focused sessions. Each session should update the 
 
 9. **Blog section** — implementation and runtime verification complete; live visual verification remains pending.
    - Recheck the Blog page at desktop and mobile widths when a browser target is available.
+   - Apply the role-based Blog authorization contract in [Blog section sub-plan](sections/blog.md) as a separate implementation task.
+
+10. **Projects authorization and stars** — implemented and covered by automated tests; live visual verification pending.
+    - Follow [Projects authorization and stars](sections/projects-authorization-and-stars.md) for the four-role capability matrix, server-side checks, Editor administration, star behavior, JSON privacy, and acceptance scenarios.
+    - Reinspect the current code before implementation; the specification records the repository baseline observed on 2026-09-28.
+    - Implement and verify the acceptance matrix, migration consistency, Django checks, and `runserver` startup in the implementation task.
+
+11. **Blog authorization** — implemented and covered by automated tests; live visual verification pending.
+    - Follow the authorization, Editor, Admin boundary, JSON, and acceptance sections in [Blog section sub-plan](sections/blog.md).
+    - Reinspect current routes, views, templates, tests, and Admin permissions before implementation; the baseline in the Blog sub-plan is dated 2026-09-28.
+    - Implement and verify its four-role acceptance matrix without changing Blog's public-read/no-draft/no-star domain contract.
 
 ## Deferred navigation item
 
