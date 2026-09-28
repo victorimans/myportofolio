@@ -186,14 +186,22 @@ class MainTest(TestCase):
         data = json.loads(self.client.get(reverse("main:get_projects_json")).content)
         self.assertEqual(data[0]["fields"]["starred_by"], [["member"]])
 
+    def login_as_owner(self):
+        owner = get_user_model().objects.create_superuser(
+            username="owner", password="password"
+        )
+        self.client.force_login(owner)
+        return owner
+
     def test_blog_page_is_accessible_and_uses_blog_template(self):
         response = self.client.get(reverse("main:show_blog"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "blog.html")
-        self.assertContains(response, "Tambah Blog")
+        self.assertNotContains(response, "Tambah Blog")
 
     def test_blog_form_page_is_accessible(self):
+        self.login_as_owner()
         response = self.client.get(reverse("main:create_blog"))
 
         self.assertEqual(response.status_code, 200)
@@ -202,6 +210,7 @@ class MainTest(TestCase):
         self.assertContains(response, "csrfmiddlewaretoken")
 
     def test_blog_form_saves_post_and_redirects(self):
+        self.login_as_owner()
         response = self.client.post(
             reverse("main:create_blog"),
             {
@@ -218,6 +227,7 @@ class MainTest(TestCase):
         self.assertContains(response, "Blog baru berhasil ditambahkan!")
 
     def test_blog_form_renders_all_editable_fields(self):
+        self.login_as_owner()
         response = self.client.get(reverse("main:create_blog"))
 
         for field_name in ("title", "content", "category", "picture_link"):
@@ -226,6 +236,7 @@ class MainTest(TestCase):
         self.assertNotContains(response, 'name="id"')
 
     def test_blog_update_form_prefills_and_updates_post(self):
+        self.login_as_owner()
         blog_post = BlogPost.objects.create(
             title="Original title",
             content="Original content",
@@ -263,6 +274,7 @@ class MainTest(TestCase):
         self.assertContains(response, "Blog berhasil diperbarui!")
 
     def test_delete_blog_removes_post_and_rejects_get(self):
+        owner = self.login_as_owner()
         blog_post = BlogPost.objects.create(
             title="Blog to delete",
             content="This post should be removed.",
@@ -274,6 +286,7 @@ class MainTest(TestCase):
         self.assertTrue(BlogPost.objects.filter(pk=blog_post.id).exists())
 
         csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.force_login(owner)
         response = csrf_client.post(
             reverse("main:delete_blog", args=[blog_post.id]),
             follow=True,
@@ -337,6 +350,7 @@ class MainTest(TestCase):
         self.assertTrue({"title", "content", "category", "picture_link", "created_at"}.issubset(column_names))
 
     def test_blog_templates_use_one_root_document(self):
+        self.login_as_owner()
         list_response = self.client.get(reverse("main:show_blog"))
         form_response = self.client.get(reverse("main:create_blog"))
 
@@ -346,6 +360,7 @@ class MainTest(TestCase):
         self.assertContains(form_response, 'href="/static/css/style.css"')
 
     def test_blog_page_displays_category_and_picture(self):
+        self.login_as_owner()
         blog_post = BlogPost.objects.create(
             title="A categorized post",
             content="Post content",
@@ -384,6 +399,60 @@ class MainTest(TestCase):
         self.assertContains(response, "JSON-backed title")
         self.assertContains(response, "JSON-backed content")
         self.assertEqual(response.context["blog_posts"][0].__class__, BlogPost)
+
+    def test_blog_writes_require_superuser(self):
+        blog_post = BlogPost.objects.create(title="Protected", content="Keep this post.")
+        add_url = reverse("main:create_blog")
+        edit_url = reverse("main:update_blog", args=[blog_post.id])
+        delete_url = reverse("main:delete_blog", args=[blog_post.id])
+        payload = {"title": "Changed", "content": "Changed content", "category": "ai"}
+
+        for url, method in ((add_url, "get"), (add_url, "post"), (edit_url, "get"), (edit_url, "post"), (delete_url, "post")):
+            response = getattr(self.client, method)(url, payload if method == "post" else None)
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.url, f"/login/?next={url}")
+
+        user = get_user_model().objects.create_user(username="member", password="password")
+        self.client.force_login(user)
+        for url, method in ((add_url, "get"), (add_url, "post"), (edit_url, "get"), (edit_url, "post"), (delete_url, "post")):
+            self.assertEqual(getattr(self.client, method)(url, payload if method == "post" else None).status_code, 403)
+        blog_post.refresh_from_db()
+        self.assertEqual(blog_post.title, "Protected")
+        self.assertFalse(BlogPost.objects.filter(title="Changed").exists())
+
+    def test_blog_star_requires_login_and_toggles_only_on_post(self):
+        blog_post = BlogPost.objects.create(title="Starred", content="A post.")
+        url = reverse("main:toggle_blog_star", args=[blog_post.id])
+        response = self.client.post(url)
+        self.assertEqual(response.url, f"/login/?next={url}")
+        self.assertEqual(blog_post.starred_by.count(), 0)
+
+        user = get_user_model().objects.create_user(username="member", password="password")
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(url).status_code, 302)
+        self.assertEqual(blog_post.starred_by.count(), 0)
+        self.client.post(url)
+        self.assertEqual(blog_post.starred_by.count(), 1)
+        self.assertContains(self.client.get(reverse("main:show_blog")), "Unstar")
+        self.client.post(url)
+        self.assertEqual(blog_post.starred_by.count(), 0)
+
+    def test_blog_page_hides_owner_controls_and_api_uses_usernames(self):
+        blog_post = BlogPost.objects.create(title="Public blog", content="A post.")
+        user = get_user_model().objects.create_user(username="member", password="password")
+        blog_post.starred_by.add(user)
+        page = reverse("main:show_blog")
+        for label in ("Tambah Blog", "Edit Blog", "Hapus Blog"):
+            self.assertNotContains(self.client.get(page), label)
+        self.assertContains(self.client.get(page), "Star")
+        self.client.force_login(user)
+        self.assertNotContains(self.client.get(page), "Hapus Blog")
+        self.assertContains(self.client.get(page), "Unstar")
+        self.login_as_owner()
+        for label in ("Tambah Blog", "Edit Blog", "Hapus Blog"):
+            self.assertContains(self.client.get(page), label)
+        data = json.loads(self.client.get(reverse("main:get_blog_json")).content)
+        self.assertEqual(data[0]["fields"]["starred_by"], [["member"]])
 
     def test_blog_page_displays_stored_post_title_and_content(self):
         blog_post = BlogPost.objects.create(

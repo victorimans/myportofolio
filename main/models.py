@@ -67,6 +67,7 @@ class BlogPost(models.Model):
     )
     picture_link = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    starred_by = models.ManyToManyField(User, related_name="starred_blog_posts", blank=True)
 
     class Meta:
         ordering = ["-created_at", "-id"]

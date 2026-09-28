@@ -153,8 +153,12 @@ def show_json_by_id(request, id):
     return HttpResponse(data, content_type="application/json")
 
 
+@login_required(login_url="/login/")
 @require_http_methods(["GET", "POST"])
 def create_blog(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+
     form = BlogPostForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
@@ -172,8 +176,12 @@ def create_blog(request):
     return render(request, "blog_form.html", context)
 
 
+@login_required(login_url="/login/")
 @require_http_methods(["GET", "POST"])
 def update_blog(request, id):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+
     blog_post = get_object_or_404(BlogPost, pk=id)
     form = BlogPostForm(request.POST or None, instance=blog_post)
 
@@ -193,18 +201,35 @@ def update_blog(request, id):
     return render(request, "blog_form.html", context)
 
 
+@login_required(login_url="/login/")
 @require_POST
 def delete_blog(request, id):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+
     blog_post = get_object_or_404(BlogPost, pk=id)
     blog_post.delete()
     messages.success(request, "Blog berhasil dihapus!")
     return redirect("main:show_blog")
 
 
+@login_required(login_url="/login/")
+def toggle_blog_star(request, id):
+    blog_post = get_object_or_404(BlogPost, pk=id)
+
+    if request.method == "POST":
+        if blog_post.starred_by.filter(pk=request.user.pk).exists():
+            blog_post.starred_by.remove(request.user)
+        else:
+            blog_post.starred_by.add(request.user)
+
+    return redirect("main:show_blog")
+
+
 @require_GET
 def get_blog_json(request):
     blog_posts = BlogPost.objects.order_by("-created_at", "-id")
-    blog_posts_json = serializers.serialize("json", blog_posts)
+    blog_posts_json = serializers.serialize("json", blog_posts, use_natural_foreign_keys=True)
     return HttpResponse(blog_posts_json, content_type="application/json")
 
 

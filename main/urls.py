@@ -17,6 +17,7 @@ from main.views import (
     show_main,
     show_projects,
     toggle_star,
+    toggle_blog_star,
     update_blog,
 )
 
@@ -36,6 +37,7 @@ urlpatterns = [
     path("blog/add/", create_blog, name="create_blog"),
     path("blog/<int:id>/edit/", update_blog, name="update_blog"),
     path("blog/<int:id>/delete/", delete_blog, name="delete_blog"),
+    path("blog/<int:id>/star/", toggle_blog_star, name="toggle_blog_star"),
     path("blog/", show_blog, name="show_blog"),
     path("api/blog/", get_blog_json, name="get_blog_json"),
     path("api/blog/<int:id>/", show_blog_json_by_id, name="show_blog_json_by_id"),
