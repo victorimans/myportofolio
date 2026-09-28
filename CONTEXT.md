@@ -29,7 +29,7 @@ The portfolio-maintainer role with full authority over Project records, includin
 _Avoid_: Confusing ownership of the portfolio with ownership of an individual star
 
 **Editor**:
-A registered account assigned the Editor role by the portfolio administrator. An Editor may read and change Project content, but may not create or remove Projects.
+A registered account assigned the Editor role by the portfolio administrator. An Editor may read and change Project and Blog post content, but may not create or remove those records through the public portfolio workflows.
 _Avoid_: Treating editor status as permission to change star membership or manage accounts
 
 **Star**:

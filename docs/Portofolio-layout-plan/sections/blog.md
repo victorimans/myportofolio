@@ -128,7 +128,7 @@ The model, migration, and database schema must agree. Because the current BlogPo
 - Delete is available at `/blog/<int:id>/delete/` through `main:delete_blog`.
 - The delete view accepts `POST` only and retrieves the selected BlogPost by primary key.
 - The view deletes the record, shows a success message, and redirects to `/blog/`.
-- Each rendered post provides a visible Delete button connected to this route.
+- Each rendered post provides a Delete button only to a superuser, connected to this route.
 - The delete control is a form submission with `{% csrf_token %}`, not a destructive `GET` link.
 - A missing BlogPost returns the normal Django 404 response.
 
@@ -143,7 +143,8 @@ Checked against the repository on 2026-09-28. Treat these as observations, not i
 - `create_blog` and `update_blog` require login and then currently allow only `is_superuser`; both accept GET and POST.
 - `delete_blog` requires login, accepts POST, and currently allows only `is_superuser`.
 - `blog.html` currently shows the create control to superusers but renders edit and delete controls for every visitor.
-- `toggle_blog_star` and its route currently exist even though Blog was specified as having no star interaction. It is outside this Blog contract and should not be presented as an approved Blog feature. A later implementation task should remove/retire it or explicitly keep it out of the user-facing routes and tests; it must not cause Blog posts to have a star relationship.
+- The current workspace also contains an uncommitted `BlogPost.starred_by` field, a star migration, `toggle_blog_star`, and Blog star controls/tests. These are present in the current working tree but conflict with the agreed Blog domain, which has no star interaction. The agreed target removes the Blog star feature, endpoint, controls, field, and relation.
+- Because the user confirmed that Blog star memberships may be deleted together with the relation, a future implementation may use an explicit schema migration that removes `BlogPost.starred_by` and its join table/data. The migration must be reviewed and applied deliberately; do not silently delete unrelated Project stars or user accounts. No data export is required by the agreed product contract.
 - `show_blog` and `/api/blog/` are public. `/api/blog/<int:id>/` also exists and is public; the earlier functional acceptance only requires the collection endpoint. This authorization specification does not require a new detail page or route and any existing public JSON detail route remains read-only/public.
 - Existing tests cover public access and CRUD, but their expectations must be checked against the new role matrix. Update authorization tests and template visibility assertions are required as part of a future implementation.
 - The login view currently redirects to the landing page after authentication and does not appear to honor `next`; the agreed protected-flow contract requires safe continuation after login.
@@ -192,6 +193,7 @@ The Editor role is membership in the exact Django Group named `Editor`, assigned
 - Show `Edit Blog` only to Editor members and superusers.
 - Show `Hapus Blog` only to superusers, as a CSRF-protected POST form.
 - Show no star/unstar controls or star count for BlogPost.
+- The target Blog model has no `starred_by` relation or Blog-specific star join table. Remove/retire the Blog star route and implementation; Projects star data and routes are unaffected.
 - Keep the view-level authorization checks even when controls are hidden; crafted direct requests must receive the matrix's HTTP result.
 - Preserve semantic buttons/links, labels, keyboard accessibility, and existing template inheritance from `base.html`.
 
@@ -239,24 +241,27 @@ Test each role with separate clients and test both rendered controls and direct 
 | Blog list for Editor | Edit controls only; no create/delete/star controls |
 | Blog list for superuser | Create/edit/delete controls; no star controls |
 | Any Blog list/JSON response | No star count, star relation, or private account information |
+| Blog schema after target migration | No BlogPost star relation or Blog star join table; Project star relation remains intact |
+| Existing Blog star memberships during migration | Deleted as explicitly approved; no Project stars or User accounts are deleted |
 | Django Admin Blog CRUD by account with relevant Admin permissions | Continues to follow Django Admin permissions independently of public-view role |
 
 ### Completion criteria for a future implementation
 
-- [ ] Public reads remain anonymous and preserve all Blog content, ordering, empty-state, and JSON behavior.
-- [ ] Server-side create/update/delete authorization matches the four-role matrix.
-- [ ] `Editor` membership is manageable in Django Admin, grants update only in public Blog views, and is not assigned automatically at registration.
-- [ ] Create/update GET and POST behavior, delete POST-only behavior, 403/405 precedence, `next` redirect, safe local redirect validation, and 404 behavior match this contract.
-- [ ] CSRF is validated for every mutation form; invalid input or rejected requests do not mutate records.
-- [ ] Templates expose controls to the correct roles and no Blog star controls are presented.
-- [ ] Django Admin remains separately permission-protected and operational for authorized staff.
-- [ ] JSON collection and existing detail reads remain public and contain only public BlogPost data.
-- [ ] Relevant tests cover the full acceptance matrix, including direct unauthorized requests and CSRF-enforcing client behavior.
-- [ ] Existing Blog functional checks remain valid; schema/migrations remain consistent; `python manage.py check` and `python manage.py runserver` succeed.
+- [x] Public reads remain anonymous and preserve all Blog content, ordering, empty-state, and JSON behavior.
+- [x] Server-side create/update/delete authorization matches the four-role matrix.
+- [x] `Editor` membership is manageable in Django Admin, grants update only in public Blog views, and is not assigned automatically at registration.
+- [x] Create/update GET and POST behavior, delete POST-only behavior, 403/405 precedence, `next` redirect, safe local redirect validation, and 404 behavior match this contract.
+- [x] CSRF is validated for every mutation form; invalid input or rejected requests do not mutate records.
+- [x] Templates expose controls to the correct roles and no Blog star controls are presented.
+- [x] Blog star route, view, relation, and join table are removed through a reviewed migration; Project star behavior/data remain unchanged.
+- [x] Django Admin remains separately permission-protected and operational for authorized staff.
+- [x] JSON collection and existing detail reads remain public and contain only public BlogPost data.
+- [x] Relevant tests cover the full acceptance matrix, including direct unauthorized requests and CSRF-enforcing client behavior.
+- [x] Existing Blog functional checks remain valid; schema/migrations remain consistent; `python manage.py check` and `python manage.py runserver` succeed.
 
 ### Explicit non-goals for Blog authorization
 
-- BlogPost stars, likes, reactions, or per-user interaction state.
+- BlogPost stars, likes, reactions, or per-user interaction state; any existing Blog star memberships may be deleted with the relation as approved.
 - Draft/published visibility, author ownership, or per-post access rules.
 - Applying the public-view Editor restrictions to Django Admin's separate permission model.
 - Adding a new detail page or API route; existing list and JSON routes remain public as described above.
@@ -331,19 +336,19 @@ At minimum, add tests for:
 
 ### Empty database
 
-When no BlogPost exists, `/blog/` returns HTTP 200, uses `blog.html`, renders no post card, and shows `No blog posts have been added yet.`
+When no BlogPost exists, `/blog/` returns HTTP 200, uses `blog.html`, renders no post card, and shows `No blog posts have been added yet.` Every BlogPost that does exist is publicly readable; the role policy gates mutations only.
 
 ### Create a post
 
-When a user submits valid title, content, category, and optional picture-link values through `/blog/add/`, one BlogPost is saved and the user is redirected to `/blog/`, where the new post is visible.
+When a superuser submits valid title, content, category, and optional picture-link values through `/blog/add/`, one BlogPost is saved and the user is redirected to `/blog/`, where the new post is visible. An ordinary user or Editor cannot create through a direct request.
 
 ### Update a post
 
-When a user opens `/blog/<int:id>/edit/`, the form contains the selected post's current values. Submitting valid changed values updates that same record and the changed post is visible on `/blog/`.
+When an Editor or superuser opens `/blog/<int:id>/edit/`, the form contains the selected post's current values. Submitting valid changed values updates that same record and the changed post is visible on `/blog/`. An ordinary user receives HTTP 403.
 
 ### Delete a post
 
-When a user submits the CSRF-protected Delete button for a post, that BlogPost is removed and the user is redirected to `/blog/` without the deleted post.
+When a superuser submits the CSRF-protected Delete button for a post, that BlogPost is removed and the user is redirected to `/blog/` without the deleted post. An ordinary user or Editor receives HTTP 403 and the post remains.
 
 ### One or more posts
 
@@ -401,5 +406,5 @@ Runtime verification on 2026-09-20:
 - [x] `python manage.py makemigrations --check --dry-run` reported no changes.
 - [x] `python manage.py runserver` started successfully and `/blog/` returned HTTP 200.
 - [x] Admin, create, update, and delete workflows are covered by automated tests.
-- [ ] Role-based Blog authorization and control visibility are pending; the historical verification above predates that specification.
-- [ ] Live desktop/mobile behavior remains unverified because no browser target is available.
+- [x] Role-based Blog authorization and control visibility passed automated checks on 2026-09-28 (43 tests); migration and Django checks passed, and `/blog/` returned HTTP 200.
+- [ ] Live desktop/mobile behavior remains unverified because the browser integration was unavailable.

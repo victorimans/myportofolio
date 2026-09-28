@@ -1,8 +1,11 @@
 import json
+import uuid
+from urllib.parse import parse_qs, urlsplit
 from unittest.mock import patch
 
 from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.core import serializers
 from django.db import connection
 from django.http import HttpResponse
@@ -151,41 +154,6 @@ class MainTest(TestCase):
         self.assertEqual(self.client.post(delete_url).status_code, 302)
         self.assertFalse(Project.objects.filter(pk=project.pk).exists())
 
-    def test_star_requires_login_and_toggles_only_on_post(self):
-        project = Project.objects.create(title="Starred", description="A project.", tech_stack="Django")
-        url = reverse("main:toggle_star", args=[project.id])
-        response = self.client.post(url)
-        self.assertEqual(response.url, f"/login/?next={url}")
-        self.assertEqual(project.starred_by.count(), 0)
-
-        user = get_user_model().objects.create_user(username="member", password="password")
-        self.client.force_login(user)
-        self.assertEqual(self.client.get(url).status_code, 302)
-        self.assertEqual(project.starred_by.count(), 0)
-        self.client.post(url)
-        self.assertEqual(project.starred_by.count(), 1)
-        self.assertContains(self.client.get(reverse("main:show_projects")), "Unstar")
-        self.client.post(url)
-        self.assertEqual(project.starred_by.count(), 0)
-
-    def test_project_page_hides_owner_controls_and_api_uses_usernames(self):
-        project = Project.objects.create(title="Public project", description="A project.", tech_stack="Django")
-        user = get_user_model().objects.create_user(username="member", password="password")
-        project.starred_by.add(user)
-        page = reverse("main:show_projects")
-        self.assertNotContains(self.client.get(page), "Hapus Project")
-        self.assertNotContains(self.client.get(page), "Tambah Project")
-        self.assertContains(self.client.get(page), "Star")
-        self.client.force_login(user)
-        self.assertNotContains(self.client.get(page), "Hapus Project")
-        self.assertContains(self.client.get(page), "Unstar")
-        owner = get_user_model().objects.create_superuser(username="owner", password="password")
-        self.client.force_login(owner)
-        self.assertContains(self.client.get(page), "Hapus Project")
-        self.assertContains(self.client.get(page), "Tambah Project")
-        data = json.loads(self.client.get(reverse("main:get_projects_json")).content)
-        self.assertEqual(data[0]["fields"]["starred_by"], [["member"]])
-
     def login_as_owner(self):
         owner = get_user_model().objects.create_superuser(
             username="owner", password="password"
@@ -333,9 +301,10 @@ class MainTest(TestCase):
         self.assertEqual(data[0]["fields"]["content"], "Newer JSON content")
         self.assertEqual(data[0]["fields"]["category"], "web-development")
         self.assertEqual(data[0]["fields"]["picture_link"], "https://example.com/blog.jpg")
-        self.assertEqual(
-            data[0]["fields"]["created_at"],
-            newer_post.created_at.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+        self.assertAlmostEqual(
+            timezone.datetime.fromisoformat(data[0]["fields"]["created_at"].replace("Z", "+00:00")).timestamp(),
+            newer_post.created_at.timestamp(),
+            delta=0.001,
         )
 
     def test_blogpost_database_schema_contains_model_fields(self):
@@ -420,40 +389,6 @@ class MainTest(TestCase):
         self.assertEqual(blog_post.title, "Protected")
         self.assertFalse(BlogPost.objects.filter(title="Changed").exists())
 
-    def test_blog_star_requires_login_and_toggles_only_on_post(self):
-        blog_post = BlogPost.objects.create(title="Starred", content="A post.")
-        url = reverse("main:toggle_blog_star", args=[blog_post.id])
-        response = self.client.post(url)
-        self.assertEqual(response.url, f"/login/?next={url}")
-        self.assertEqual(blog_post.starred_by.count(), 0)
-
-        user = get_user_model().objects.create_user(username="member", password="password")
-        self.client.force_login(user)
-        self.assertEqual(self.client.get(url).status_code, 302)
-        self.assertEqual(blog_post.starred_by.count(), 0)
-        self.client.post(url)
-        self.assertEqual(blog_post.starred_by.count(), 1)
-        self.assertContains(self.client.get(reverse("main:show_blog")), "Unstar")
-        self.client.post(url)
-        self.assertEqual(blog_post.starred_by.count(), 0)
-
-    def test_blog_page_hides_owner_controls_and_api_uses_usernames(self):
-        blog_post = BlogPost.objects.create(title="Public blog", content="A post.")
-        user = get_user_model().objects.create_user(username="member", password="password")
-        blog_post.starred_by.add(user)
-        page = reverse("main:show_blog")
-        for label in ("Tambah Blog", "Edit Blog", "Hapus Blog"):
-            self.assertNotContains(self.client.get(page), label)
-        self.assertContains(self.client.get(page), "Star")
-        self.client.force_login(user)
-        self.assertNotContains(self.client.get(page), "Hapus Blog")
-        self.assertContains(self.client.get(page), "Unstar")
-        self.login_as_owner()
-        for label in ("Tambah Blog", "Edit Blog", "Hapus Blog"):
-            self.assertContains(self.client.get(page), label)
-        data = json.loads(self.client.get(reverse("main:get_blog_json")).content)
-        self.assertEqual(data[0]["fields"]["starred_by"], [["member"]])
-
     def test_blog_page_displays_stored_post_title_and_content(self):
         blog_post = BlogPost.objects.create(
             title="My first blog post",
@@ -526,3 +461,309 @@ class MainTest(TestCase):
         blog_response = self.client.get(reverse("main:show_blog"))
         self.assertContains(blog_response, "Admin-created post")
         self.assertContains(blog_response, "Content entered through Django Admin.")
+
+
+class AuthorizationAcceptanceTests(TestCase):
+    def setUp(self):
+        self.project = Project.objects.create(
+            title="Public project", description="Project description", tech_stack="Django"
+        )
+        self.post = BlogPost.objects.create(title="Public blog", content="Blog content")
+        self.editor_group = Group.objects.create(name="Editor")
+        self.member = get_user_model().objects.create_user(
+            username="ordinary", password="password", email="ordinary@example.com"
+        )
+        self.editor = get_user_model().objects.create_user(username="editor", password="password")
+        self.editor.groups.add(self.editor_group)
+        self.owner = get_user_model().objects.create_superuser(username="owner", password="password")
+        self.clients = {"anonymous": Client()}
+        for role, user in (("member", self.member), ("editor", self.editor), ("owner", self.owner)):
+            client = Client()
+            client.force_login(user)
+            self.clients[role] = client
+        self.project_data = {
+            "title": "Changed project", "description": "Changed description", "tech_stack": "Python",
+            "project_url": "https://example.com/project", "project_image_url": "https://example.com/image.png",
+        }
+        self.blog_data = {
+            "title": "Changed blog", "content": "Changed content", "category": "career",
+            "picture_link": "https://example.com/blog.png",
+        }
+
+    def assert_login_next(self, response, destination):
+        self.assertEqual(response.status_code, 302)
+        parts = urlsplit(response.url)
+        self.assertEqual(parts.path, reverse("main:login"))
+        self.assertEqual(parse_qs(parts.query).get("next"), [destination])
+
+    def test_public_lists_and_json_details_for_every_role(self):
+        routes = (
+            (reverse("main:show_projects"), self.project.title),
+            (reverse("main:show_blog"), self.post.title),
+            (reverse("main:get_projects_json"), self.project.title),
+            (reverse("main:show_json_by_id", args=[self.project.pk]), self.project.title),
+            (reverse("main:get_blog_json"), self.post.title),
+            (reverse("main:show_blog_json_by_id", args=[self.post.pk]), self.post.title),
+        )
+        for role, client in self.clients.items():
+            for url, title in routes:
+                with self.subTest(role=role, url=url):
+                    self.assertContains(client.get(url), title)
+        self.assertEqual(self.clients["anonymous"].get(
+            reverse("main:show_blog_json_by_id", args=[self.post.pk + 1000])
+        ).status_code, 404)
+
+    def test_project_detail_html_is_public(self):
+        url = reverse("main:show_project_detail", args=[self.project.pk])
+        for role, client in self.clients.items():
+            with self.subTest(role=role):
+                self.assertContains(client.get(url), self.project.title)
+
+    def test_anonymous_actions_redirect_even_for_unsupported_methods(self):
+        actions = (
+            reverse("main:create_project"),
+            reverse("main:update_project", args=[self.project.pk]),
+            reverse("main:delete_project", args=[self.project.pk]),
+            reverse("main:toggle_star", args=[self.project.pk]),
+            reverse("main:create_blog"),
+            reverse("main:update_blog", args=[self.post.pk]),
+            reverse("main:delete_blog", args=[self.post.pk]),
+        )
+        for url in actions:
+            for method in ("get", "post", "put"):
+                with self.subTest(url=url, method=method):
+                    self.assert_login_next(getattr(self.clients["anonymous"], method)(url), url)
+        self.assertEqual(Project.objects.count(), 1)
+        self.assertEqual(BlogPost.objects.count(), 1)
+        self.assertEqual(self.project.starred_by.count(), 0)
+
+    def test_login_next_accepts_local_destination_and_rejects_external(self):
+        login_url = reverse("main:login")
+        destination = reverse("main:update_blog", args=[self.post.pk])
+        for next_value, expected in (
+            (destination, destination),
+            ("https://evil.example/steal", reverse("main:show_main")),
+            ("//evil.example/steal", reverse("main:show_main")),
+        ):
+            with self.subTest(next_value=next_value):
+                client = Client()
+                response = client.post(
+                    f"{login_url}?next={next_value}",
+                    {"username": self.editor.username, "password": "password", "next": next_value},
+                )
+                self.assertRedirects(response, expected, fetch_redirect_response=False)
+
+    def test_role_authorization_and_method_precedence(self):
+        actions = (
+            (reverse("main:create_project"), self.project_data, {"owner"}),
+            (reverse("main:update_project", args=[self.project.pk]), self.project_data, {"editor", "owner"}),
+            (reverse("main:delete_project", args=[self.project.pk]), {}, {"owner"}),
+            (reverse("main:create_blog"), self.blog_data, {"owner"}),
+            (reverse("main:update_blog", args=[self.post.pk]), self.blog_data, {"editor", "owner"}),
+            (reverse("main:delete_blog", args=[self.post.pk]), {}, {"owner"}),
+        )
+        for url, data, allowed in actions:
+            for role in ("member", "editor", "owner"):
+                if role in allowed:
+                    continue
+                for method in ("get", "post", "put"):
+                    with self.subTest(url=url, role=role, method=method):
+                        self.assertEqual(getattr(self.clients[role], method)(url, data).status_code, 403)
+            for role in allowed:
+                with self.subTest(url=url, role=role, method="put"):
+                    self.assertEqual(self.clients[role].put(url, data).status_code, 405)
+        self.assertEqual(Project.objects.count(), 1)
+        self.assertEqual(BlogPost.objects.count(), 1)
+        self.project.refresh_from_db()
+        self.post.refresh_from_db()
+        self.assertEqual(self.project.title, "Public project")
+        self.assertEqual(self.post.title, "Public blog")
+
+    def test_project_forms_crud_and_writable_fields(self):
+        create = reverse("main:create_project")
+        update = reverse("main:update_project", args=[self.project.pk])
+        self.assertContains(self.clients["owner"].get(create), 'name="title"')
+        self.assertContains(self.clients["editor"].get(update), "Public project")
+        self.assertEqual(Project.objects.count(), 1)
+        for url in (create, update):
+            self.assertEqual(self.clients["owner"].put(url).status_code, 405)
+        invalid = {**self.project_data, "title": ""}
+        for client, url in ((self.clients["owner"], create), (self.clients["editor"], update)):
+            response = client.post(url, invalid)
+            self.assertEqual(response.status_code, 200)
+            self.assertFormError(response.context["form"], "title", "This field is required.")
+        self.assertEqual(Project.objects.count(), 1)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.title, "Public project")
+        self.project.starred_by.add(self.member)
+        response = self.clients["editor"].post(update, {**self.project_data, "starred_by": self.editor.pk})
+        self.assertRedirects(response, reverse("main:show_projects"))
+        self.project.refresh_from_db()
+        for field, value in self.project_data.items():
+            self.assertEqual(getattr(self.project, field), value)
+        self.assertEqual(list(self.project.starred_by.all()), [self.member])
+        self.assertRedirects(self.clients["owner"].post(create, self.project_data), reverse("main:show_projects"))
+        self.assertEqual(Project.objects.count(), 2)
+        self.assertEqual(self.clients["owner"].get(reverse("main:delete_project", args=[self.project.pk])).status_code, 405)
+        self.assertRedirects(self.clients["owner"].post(reverse("main:delete_project", args=[self.project.pk])), reverse("main:show_projects"))
+        self.assertFalse(Project.objects.filter(pk=self.project.pk).exists())
+
+    def test_blog_forms_crud_and_server_managed_fields(self):
+        create = reverse("main:create_blog")
+        update = reverse("main:update_blog", args=[self.post.pk])
+        self.assertContains(self.clients["owner"].get(create), 'name="title"')
+        self.assertContains(self.clients["editor"].get(update), "Public blog")
+        original_date = self.post.created_at
+        original_pk = self.post.pk
+        for url in (create, update):
+            self.assertEqual(self.clients["owner"].put(url).status_code, 405)
+        for client, url in ((self.clients["owner"], create), (self.clients["editor"], update)):
+            response = client.post(url, {**self.blog_data, "title": ""})
+            self.assertEqual(response.status_code, 200)
+            self.assertFormError(response.context["form"], "title", "This field is required.")
+        self.assertEqual(BlogPost.objects.count(), 1)
+        self.assertRedirects(self.clients["editor"].post(update, {
+            **self.blog_data, "id": 99999, "created_at": "2000-01-01T00:00:00Z"
+        }), reverse("main:show_blog"))
+        self.post.refresh_from_db()
+        self.assertEqual(self.post.pk, original_pk)
+        self.assertEqual(self.post.created_at, original_date)
+        for field, value in self.blog_data.items():
+            self.assertEqual(getattr(self.post, field), value)
+        self.assertRedirects(self.clients["owner"].post(create, self.blog_data), reverse("main:show_blog"))
+        self.assertEqual(BlogPost.objects.count(), 2)
+        self.assertEqual(self.clients["owner"].get(reverse("main:delete_blog", args=[self.post.pk])).status_code, 405)
+        self.assertRedirects(self.clients["owner"].post(reverse("main:delete_blog", args=[self.post.pk])), reverse("main:show_blog"))
+        self.assertFalse(BlogPost.objects.filter(pk=self.post.pk).exists())
+
+    def test_editor_membership_is_checked_on_every_request(self):
+        for update, payload in (
+            (reverse("main:update_project", args=[self.project.pk]), self.project_data),
+            (reverse("main:update_blog", args=[self.post.pk]), self.blog_data),
+        ):
+            self.assertEqual(self.clients["member"].get(update).status_code, 403)
+            self.member.groups.add(self.editor_group)
+            self.assertEqual(self.clients["member"].get(update).status_code, 200)
+            self.assertRedirects(self.clients["member"].post(update, payload),
+                                 reverse("main:show_projects" if "projects" in update else "main:show_blog"))
+            self.member.groups.remove(self.editor_group)
+            self.assertEqual(self.clients["member"].get(update).status_code, 403)
+            self.assertEqual(self.clients["member"].post(update, payload).status_code, 403)
+        self.owner.groups.add(self.editor_group)
+        self.assertEqual(self.clients["owner"].get(reverse("main:create_blog")).status_code, 200)
+        self.owner.groups.remove(self.editor_group)
+        self.assertEqual(self.clients["owner"].get(reverse("main:create_project")).status_code, 200)
+
+    def test_unknown_ids_return_404(self):
+        unknown_project = uuid.uuid4()
+        for url in (
+            reverse("main:update_project", args=[unknown_project]),
+            reverse("main:delete_project", args=[unknown_project]),
+            reverse("main:toggle_star", args=[unknown_project]),
+            reverse("main:update_blog", args=[self.post.pk + 1000]),
+            reverse("main:delete_blog", args=[self.post.pk + 1000]),
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(self.clients["owner"].post(url).status_code, 404)
+        self.assertEqual(self.clients["anonymous"].get(
+            reverse("main:show_json_by_id", args=[unknown_project])
+        ).status_code, 404)
+        self.assertEqual(Project.objects.count(), 1)
+        self.assertEqual(BlogPost.objects.count(), 1)
+
+    def test_star_toggle_is_post_only_independent_and_private(self):
+        other = Project.objects.create(title="Other", description="Other description", tech_stack="Python")
+        url = reverse("main:toggle_star", args=[self.project.pk])
+        for role in ("member", "editor", "owner"):
+            client = self.clients[role]
+            user = {"member": self.member, "editor": self.editor, "owner": self.owner}[role]
+            self.assertEqual(client.get(url).status_code, 405)
+            self.assertEqual(client.put(url).status_code, 405)
+            self.assertRedirects(client.post(url), reverse("main:show_projects"))
+            self.assertEqual(self.project.starred_by.filter(pk=user.pk).count(), 1)
+            self.assertEqual(other.starred_by.count(), 0)
+            self.assertContains(client.get(reverse("main:show_projects")), "Unstar")
+            self.assertRedirects(client.post(url), reverse("main:show_projects"))
+            self.assertFalse(self.project.starred_by.filter(pk=user.pk).exists())
+        self.assertEqual(self.project.starred_by.count(), 0)
+
+    def test_valid_csrf_star_toggle_and_zero_count(self):
+        url = reverse("main:toggle_star", args=[self.project.pk])
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.member)
+        page = client.get(reverse("main:show_projects"))
+        self.assertContains(page, "star-count")
+        self.assertContains(page, "0 stars")
+        token = page.cookies["csrftoken"].value
+        self.assertRedirects(client.post(url, {"csrfmiddlewaretoken": token}), reverse("main:show_projects"))
+        self.assertEqual(self.project.starred_by.filter(pk=self.member.pk).count(), 1)
+        self.assertRedirects(client.post(url, {"csrfmiddlewaretoken": token}), reverse("main:show_projects"))
+        self.assertEqual(self.project.starred_by.count(), 0)
+
+    def test_project_json_never_exposes_star_membership(self):
+        self.project.starred_by.add(self.member)
+        for url in (reverse("main:get_projects_json"), reverse("main:show_json_by_id", args=[self.project.pk])):
+            for client in self.clients.values():
+                response = client.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response["Content-Type"], "application/json")
+                records = json.loads(response.content)
+                self.assertEqual(len(records), 1)
+                self.assertEqual(records[0]["fields"]["title"], self.project.title)
+                self.assertNotIn("starred_by", records[0]["fields"])
+                for secret in (self.member.username, self.member.email, '"starred_by"'):
+                    self.assertNotIn(secret, response.content.decode())
+        self.assertEqual(len(json.loads(self.clients["anonymous"].get(
+            reverse("main:get_projects_json"), {"title": "not-found"}
+        ).content)), 0)
+
+    def test_template_controls_match_roles_and_hide_identifying_stars(self):
+        self.project.starred_by.add(self.member)
+        for role, client in self.clients.items():
+            project_page = client.get(reverse("main:show_projects"))
+            blog_page = client.get(reverse("main:show_blog"))
+            self.assertContains(project_page, self.project.title)
+            self.assertContains(blog_page, self.post.title)
+            self.assertContains(project_page, "star-count")
+            self.assertNotContains(project_page, f"Dibintangi oleh {self.member.username}")
+            self.assertNotContains(project_page, self.member.email)
+            self.assertEqual("Tambah Project" in project_page.content.decode(), role == "owner")
+            self.assertEqual("Hapus Project" in project_page.content.decode(), role == "owner")
+            self.assertEqual("Edit Project" in project_page.content.decode(), role in ("editor", "owner"))
+            self.assertEqual("Tambah Blog" in blog_page.content.decode(), role == "owner")
+            self.assertEqual("Edit Blog" in blog_page.content.decode(), role in ("editor", "owner"))
+            self.assertEqual("Hapus Blog" in blog_page.content.decode(), role == "owner")
+            self.assertNotIn("star-form", blog_page.content.decode())
+            self.assertNotIn("star-count", blog_page.content.decode())
+            if role == "anonymous":
+                self.assertNotContains(project_page, 'action="' + reverse("main:toggle_star", args=[self.project.pk]) + '"')
+                self.assertContains(project_page, reverse("main:login"))
+            else:
+                self.assertContains(project_page, 'action="' + reverse("main:toggle_star", args=[self.project.pk]) + '"')
+                self.assertContains(project_page, "csrfmiddlewaretoken")
+        for client in self.clients.values():
+            for url in (reverse("main:get_blog_json"), reverse("main:show_blog_json_by_id", args=[self.post.pk])):
+                fields = json.loads(client.get(url).content)[0]["fields"]
+                self.assertFalse(any("star" in key or "user" in key for key in fields))
+
+    def test_csrf_rejects_all_mutations_without_token(self):
+        for user, url, payload in (
+            (self.owner, reverse("main:create_project"), self.project_data),
+            (self.editor, reverse("main:update_project", args=[self.project.pk]), self.project_data),
+            (self.owner, reverse("main:delete_project", args=[self.project.pk]), {}),
+            (self.member, reverse("main:toggle_star", args=[self.project.pk]), {}),
+            (self.owner, reverse("main:create_blog"), self.blog_data),
+            (self.editor, reverse("main:update_blog", args=[self.post.pk]), self.blog_data),
+            (self.owner, reverse("main:delete_blog", args=[self.post.pk]), {}),
+        ):
+            with self.subTest(url=url):
+                client = Client(enforce_csrf_checks=True)
+                client.force_login(user)
+                self.assertEqual(client.post(url, payload).status_code, 403)
+        self.assertEqual(Project.objects.count(), 1)
+        self.assertEqual(BlogPost.objects.count(), 1)
+        self.assertEqual(self.project.starred_by.count(), 0)
+        self.project.refresh_from_db()
+        self.post.refresh_from_db()
+        self.assertEqual(self.project.title, "Public project")
+        self.assertEqual(self.post.title, "Public blog")

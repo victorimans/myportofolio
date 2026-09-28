@@ -9,6 +9,7 @@
 
             <form method="post" action="{% url 'main:login' %}" class="project-form">
                 {% csrf_token %}
+                {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
                 {% for field in form %}
                     <div class="form-group">
                         <label for="{{ field.id_for_label }}">{{ field.label }}</label>

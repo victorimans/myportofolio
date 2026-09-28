@@ -1,6 +1,6 @@
 # Projects: Authorization, Editor, and Stars
 
-Status: Specification agreed; implementation is not part of this document task
+Status: Implemented; automated checks passed 2026-09-28; live visual browser verification pending
 
 Parent plan: [Portfolio layout plan](../portfolio-layout-plan.md)
 
@@ -183,19 +183,23 @@ Run each applicable case against the server-side route, not only by inspecting r
 
 ## Definition of done for a future implementation
 
-- [ ] Role checks implement the matrix server-side for every action route.
-- [ ] `Editor` role is manageable in Django Admin and does not grant create/delete.
-- [ ] A Project update route and form support the defined content fields for Editor and superuser.
-- [ ] All state changes use POST and CSRF validation; unsupported methods return 405.
-- [ ] Successful state changes use redirects to the Projects list; invalid forms preserve entered values/errors and do not mutate records.
-- [ ] CSRF rejection is verified with Django's test client configured to enforce CSRF checks, rather than relying on its default test-only bypass.
-- [ ] Login safely honors a valid local `next` destination for protected actions and rejects unsafe external destinations.
-- [ ] Authorized GET requests to create/update render forms without mutating state; valid POST changes only allowed content; invalid POST leaves data unchanged.
-- [ ] Star count and current-user state are correct for anonymous and authenticated rendering; usernames are never disclosed.
-- [ ] Project JSON remains public and preserves Tugas 3 Project content/filtering contract; `starred_by` is intentionally excluded as a privacy correction.
-- [ ] Template controls match role capabilities while backend checks independently enforce them.
-- [ ] Acceptance scenarios above pass, migrations are consistent, and `python manage.py check` passes.
-- [ ] `python manage.py runserver` starts without errors and the key public/authenticated routes render successfully.
+- [x] Role checks implement the matrix server-side for every action route.
+- [x] `Editor` role is manageable in Django Admin and does not grant create/delete.
+- [x] A Project update route and form support the defined content fields for Editor and superuser.
+- [x] All state changes use POST and CSRF validation; unsupported methods return 405.
+- [x] Successful state changes use redirects to the Projects list; invalid forms preserve entered values/errors and do not mutate records.
+- [x] CSRF rejection is verified with Django's test client configured to enforce CSRF checks, rather than relying on its default test-only bypass.
+- [x] Login safely honors a valid local `next` destination for protected actions and rejects unsafe external destinations.
+- [x] Authorized GET requests to create/update render forms without mutating state; valid POST changes only allowed content; invalid POST leaves data unchanged.
+- [x] Star count and current-user state are correct for anonymous and authenticated rendering; usernames are never disclosed.
+- [x] Project JSON remains public and preserves Tugas 3 Project content/filtering contract; `starred_by` is intentionally excluded as a privacy correction.
+- [x] Template controls match role capabilities while backend checks independently enforce them.
+- [x] Acceptance scenarios above pass, migrations are consistent, and `python manage.py check` passes.
+- [x] `python manage.py runserver` starts without errors and the key public/authenticated routes render successfully.
+
+Editor setup: a superuser can create the `Editor` Group in Django Admin under Authentication and Authorization → Groups, then assign users through the User administration page. Registration does not assign this Group.
+
+Verification 2026-09-28: automated Django suite (43 tests), project checks, migration checks, and local server HTTP responses passed. Live desktop/mobile browser verification remains pending because the browser integration was unavailable.
 
 ## Explicit non-goals
 

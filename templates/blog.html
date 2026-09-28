@@ -25,18 +25,10 @@
                                     <p class="blog-post-category">{{ blog_post.get_category_display }}</p>
                                 </div>
                                 <div class="blog-post-actions">
-                                    <form method="post" action="{% url 'main:toggle_blog_star' blog_post.id %}" class="star-form">
-                                        {% csrf_token %}
-                                        <button type="submit"
-                                                class="button button-star button-small{% if user in blog_post.starred_by.all %} is-starred{% endif %}"
-                                                title="{% if blog_post.starred_by.all %}Dibintangi oleh {{ blog_post.starred_by.all|join:', ' }}{% else %}Jadilah yang pertama memberi star{% endif %}">
-                                            <span aria-hidden="true">★</span>
-                                            {% if user in blog_post.starred_by.all %}Unstar{% else %}Star{% endif %}
-                                            <span class="star-count">{{ blog_post.starred_by.count }}</span>
-                                        </button>
-                                    </form>
-                                    {% if user.is_superuser %}
+                                    {% if can_edit %}
                                         <a href="{% url 'main:update_blog' blog_post.id %}" class="button button-small" aria-label="Edit blog: {{ blog_post.title }}">Edit Blog</a>
+                                    {% endif %}
+                                    {% if user.is_superuser %}
                                         <form method="post" action="{% url 'main:delete_blog' blog_post.id %}">
                                             {% csrf_token %}
                                             <button type="submit" class="button button-secondary button-small" aria-label="Delete blog: {{ blog_post.title }}">Hapus Blog</button>

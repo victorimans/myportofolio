@@ -14,6 +14,7 @@
                 </p>
             {% endif %}
 
+            {% if not is_detail %}
             <form method="get" class="project-search-form" role="search">
                 <label for="project-title-search">Cari project berdasarkan judul</label>
                 <div class="project-search-controls">
@@ -27,6 +28,7 @@
                     <button type="submit" class="button">Cari</button>
                 </div>
             </form>
+            {% endif %}
 
             <div class="experience-grid project-grid">
                 {% for project in project_list %}
@@ -35,7 +37,7 @@
                             <img class="project-image" src="{{ project.project_image_url }}" alt="Gambar {{ project.title }}">
                         {% endif %}
                         <span class="experience-category">{{ project.tech_stack }}</span>
-                        <h2>{{ project.title }}</h2>
+                        <h2>{% if is_detail %}{{ project.title }}{% else %}<a href="{% url 'main:show_project_detail' project.id %}">{{ project.title }}</a>{% endif %}</h2>
                         <p class="experience-description">{{ project.description }}</p>
 
                         {% if project.project_url %}
@@ -44,16 +46,20 @@
                             </p>
                         {% endif %}
 
-                        <form method="post" action="{% url 'main:toggle_star' project.id %}" class="star-form">
-                            {% csrf_token %}
-                            <button type="submit"
-                                    class="button button-star{% if user in project.starred_by.all %} is-starred{% endif %}"
-                                    title="{% if project.starred_by.all %}Dibintangi oleh {{ project.starred_by.all|join:', ' }}{% else %}Jadilah yang pertama memberi star{% endif %}">
-                                <span aria-hidden="true">★</span>
-                                {% if user in project.starred_by.all %}Unstar{% else %}Star{% endif %}
-                                <span class="star-count">{{ project.starred_by.count }}</span>
-                            </button>
-                        </form>
+                        <p class="star-count">{{ project.star_count }} star{{ project.star_count|pluralize }}</p>
+                        {% if user.is_authenticated %}
+                            <form method="post" action="{% url 'main:toggle_star' project.id %}" class="star-form">
+                                {% csrf_token %}
+                                <button type="submit" class="button button-star{% if project.is_starred %} is-starred{% endif %}" aria-label="{% if project.is_starred %}Unstar{% else %}Star{% endif %} {{ project.title }}">
+                                    {% if project.is_starred %}Unstar{% else %}Star{% endif %}
+                                </button>
+                            </form>
+                        {% else %}
+                            <a href="{% url 'main:login' %}?next={% url 'main:show_projects' %}">Login to star</a>
+                        {% endif %}
+                        {% if can_edit %}
+                            <a href="{% url 'main:update_project' project.id %}" class="button button-secondary">Edit Project</a>
+                        {% endif %}
                         {% if user.is_superuser %}
                             <form method="post" action="{% url 'main:delete_project' project.id %}" class="project-delete-form">
                                 {% csrf_token %}
