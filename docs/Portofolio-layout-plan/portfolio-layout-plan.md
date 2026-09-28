@@ -7,6 +7,7 @@ Status: In progress — profile, body sections, footer, Contact, and Blog implem
 - [x] [About section sub-plan](sections/about.md) created and aligned with the agreed direction.
 - [x] [Skills section sub-plan](sections/skills.md) created and aligned with the agreed direction.
 - [x] [Blog section sub-plan](sections/blog.md) created and aligned with the agreed direction; implementation and runtime verification are complete.
+- [x] Blog authorization and Editor-role specification added to the [Blog sub-plan](sections/blog.md); authorization implementation remains a separate task.
 - [x] [Projects authorization and stars specification](sections/projects-authorization-and-stars.md) created with the agreed role matrix, API contract, and acceptance criteria; implementation remains a separate task.
 - [x] Create the Projects, Journey, and Contact sub-plans when those focused sessions begin.
 
@@ -48,6 +49,7 @@ Last checked: 2026-09-28
 - [x] Implement the database-backed Blog section according to the [Blog sub-plan](sections/blog.md); the migration is applied.
 - [x] Complete Blog unit-test, server-startup, and Admin workflow verification.
 - [x] Document the Projects authorization, Editor role, and star interaction contract; no feature implementation is claimed by this documentation update.
+- [x] Document the Blog authorization, Editor role, and public/Admin permission boundary; no feature implementation is claimed by this documentation update.
 
 ## Follow-up session breakdown
 
@@ -90,11 +92,17 @@ Complete the remaining work as focused sessions. Each session should update the 
 
 9. **Blog section** — implementation and runtime verification complete; live visual verification remains pending.
    - Recheck the Blog page at desktop and mobile widths when a browser target is available.
+   - Apply the role-based Blog authorization contract in [Blog section sub-plan](sections/blog.md) as a separate implementation task.
 
 10. **Projects authorization and stars** — specification agreed; implementation is pending as a separate task.
     - Follow [Projects authorization and stars](sections/projects-authorization-and-stars.md) for the four-role capability matrix, server-side checks, Editor administration, star behavior, JSON privacy, and acceptance scenarios.
     - Reinspect the current code before implementation; the specification records the repository baseline observed on 2026-09-28.
     - Implement and verify the acceptance matrix, migration consistency, Django checks, and `runserver` startup in the implementation task.
+
+11. **Blog authorization** — specification agreed; implementation is pending as a separate task.
+    - Follow the authorization, Editor, Admin boundary, JSON, and acceptance sections in [Blog section sub-plan](sections/blog.md).
+    - Reinspect current routes, views, templates, tests, and Admin permissions before implementation; the baseline in the Blog sub-plan is dated 2026-09-28.
+    - Implement and verify its four-role acceptance matrix without changing Blog's public-read/no-draft/no-star domain contract.
 
 ## Deferred navigation item
 
