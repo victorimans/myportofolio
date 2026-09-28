@@ -38,6 +38,24 @@
                             </div>
                             <h2>{{ blog_post.title }}</h2>
                             <div class="blog-post-content">{{ blog_post.content|linebreaks }}</div>
+                            <div class="blog-post-star">
+                                {% if user.is_authenticated %}
+                                    <form method="post" action="{% url 'main:toggle_blog_star' blog_post.id %}" class="star-form">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="button button-star{% if blog_post.is_starred %} is-starred{% endif %}"
+                                                title="{% if blog_post.star_count %}{{ blog_post.star_count }} star{{ blog_post.star_count|pluralize }}{% else %}Jadilah yang pertama memberi star{% endif %}"
+                                                aria-label="{% if blog_post.is_starred %}Unstar{% else %}Star{% endif %} {{ blog_post.title }}">
+                                            <span class="star-icon" aria-hidden="true">★</span>
+                                            <span>{% if blog_post.is_starred %}Unstar{% else %}Star{% endif %}</span>
+                                            <span class="star-count">{{ blog_post.star_count }} star{{ blog_post.star_count|pluralize }}</span>
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <span class="star-count project-star-total">{{ blog_post.star_count }} star{{ blog_post.star_count|pluralize }}</span>
+                                    <a href="{% url 'main:login' %}?next={% url 'main:show_blog' %}">Login to star</a>
+                                {% endif %}
+                            </div>
                         </article>
                     {% empty %}
                         <p class="empty-state">No blog posts have been added yet.</p>

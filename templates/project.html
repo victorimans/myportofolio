@@ -46,15 +46,20 @@
                             </p>
                         {% endif %}
 
-                        <p class="star-count">{{ project.star_count }} star{{ project.star_count|pluralize }}</p>
                         {% if user.is_authenticated %}
                             <form method="post" action="{% url 'main:toggle_star' project.id %}" class="star-form">
                                 {% csrf_token %}
-                                <button type="submit" class="button button-star{% if project.is_starred %} is-starred{% endif %}" aria-label="{% if project.is_starred %}Unstar{% else %}Star{% endif %} {{ project.title }}">
-                                    {% if project.is_starred %}Unstar{% else %}Star{% endif %}
+                                <button type="submit"
+                                        class="button button-star{% if project.is_starred %} is-starred{% endif %}"
+                                        title="{% if project.star_count %}{{ project.star_count }} star{{ project.star_count|pluralize }}{% else %}Jadilah yang pertama memberi star{% endif %}"
+                                        aria-label="{% if project.is_starred %}Unstar{% else %}Star{% endif %} {{ project.title }}">
+                                    <span class="star-icon" aria-hidden="true">★</span>
+                                    <span>{% if project.is_starred %}Unstar{% else %}Star{% endif %}</span>
+                                    <span class="star-count">{{ project.star_count }} star{{ project.star_count|pluralize }}</span>
                                 </button>
                             </form>
                         {% else %}
+                            <span class="star-count project-star-total">{{ project.star_count }} star{{ project.star_count|pluralize }}</span>
                             <a href="{% url 'main:login' %}?next={% url 'main:show_projects' %}">Login to star</a>
                         {% endif %}
                         {% if can_edit %}

@@ -687,6 +687,21 @@ class AuthorizationAcceptanceTests(TestCase):
             self.assertFalse(self.project.starred_by.filter(pk=user.pk).exists())
         self.assertEqual(self.project.starred_by.count(), 0)
 
+    def test_blog_star_toggle_is_post_only_and_independent(self):
+        url = reverse("main:toggle_blog_star", args=[self.post.pk])
+        for role in ("member", "editor", "owner"):
+            client = self.clients[role]
+            user = {"member": self.member, "editor": self.editor, "owner": self.owner}[role]
+            self.assertEqual(client.get(url).status_code, 405)
+            self.assertEqual(client.put(url).status_code, 405)
+            self.assertRedirects(client.post(url), reverse("main:show_blog"))
+            self.assertEqual(self.post.starred_by.filter(pk=user.pk).count(), 1)
+            self.assertEqual(self.project.starred_by.count(), 0)
+            self.assertContains(client.get(reverse("main:show_blog")), "Unstar")
+            self.assertRedirects(client.post(url), reverse("main:show_blog"))
+            self.assertFalse(self.post.starred_by.filter(pk=user.pk).exists())
+        self.assertEqual(self.post.starred_by.count(), 0)
+
     def test_valid_csrf_star_toggle_and_zero_count(self):
         url = reverse("main:toggle_star", args=[self.project.pk])
         client = Client(enforce_csrf_checks=True)
@@ -699,6 +714,18 @@ class AuthorizationAcceptanceTests(TestCase):
         self.assertEqual(self.project.starred_by.filter(pk=self.member.pk).count(), 1)
         self.assertRedirects(client.post(url, {"csrfmiddlewaretoken": token}), reverse("main:show_projects"))
         self.assertEqual(self.project.starred_by.count(), 0)
+
+    def test_blog_star_toggle_requires_valid_csrf_token(self):
+        url = reverse("main:toggle_blog_star", args=[self.post.pk])
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.member)
+        page = client.get(reverse("main:show_blog"))
+        self.assertContains(page, "0 stars")
+        token = page.cookies["csrftoken"].value
+        self.assertRedirects(client.post(url, {"csrfmiddlewaretoken": token}), reverse("main:show_blog"))
+        self.assertEqual(self.post.starred_by.filter(pk=self.member.pk).count(), 1)
+        self.assertRedirects(client.post(url, {"csrfmiddlewaretoken": token}), reverse("main:show_blog"))
+        self.assertEqual(self.post.starred_by.count(), 0)
 
     def test_project_json_never_exposes_star_membership(self):
         self.project.starred_by.add(self.member)
@@ -733,8 +760,15 @@ class AuthorizationAcceptanceTests(TestCase):
             self.assertEqual("Tambah Blog" in blog_page.content.decode(), role == "owner")
             self.assertEqual("Edit Blog" in blog_page.content.decode(), role in ("editor", "owner"))
             self.assertEqual("Hapus Blog" in blog_page.content.decode(), role == "owner")
-            self.assertNotIn("star-form", blog_page.content.decode())
-            self.assertNotIn("star-count", blog_page.content.decode())
+            self.assertNotContains(blog_page, f"Dibintangi oleh {self.member.username}")
+            self.assertNotContains(blog_page, self.member.email)
+            self.assertContains(blog_page, "star-count")
+            if role == "anonymous":
+                self.assertNotContains(blog_page, 'action="' + reverse("main:toggle_blog_star", args=[self.post.pk]) + '"')
+                self.assertContains(blog_page, reverse("main:login"))
+            else:
+                self.assertContains(blog_page, 'action="' + reverse("main:toggle_blog_star", args=[self.post.pk]) + '"')
+                self.assertContains(blog_page, "csrfmiddlewaretoken")
             if role == "anonymous":
                 self.assertNotContains(project_page, 'action="' + reverse("main:toggle_star", args=[self.project.pk]) + '"')
                 self.assertContains(project_page, reverse("main:login"))
@@ -752,6 +786,7 @@ class AuthorizationAcceptanceTests(TestCase):
             (self.editor, reverse("main:update_project", args=[self.project.pk]), self.project_data),
             (self.owner, reverse("main:delete_project", args=[self.project.pk]), {}),
             (self.member, reverse("main:toggle_star", args=[self.project.pk]), {}),
+            (self.member, reverse("main:toggle_blog_star", args=[self.post.pk]), {}),
             (self.owner, reverse("main:create_blog"), self.blog_data),
             (self.editor, reverse("main:update_blog", args=[self.post.pk]), self.blog_data),
             (self.owner, reverse("main:delete_blog", args=[self.post.pk]), {}),

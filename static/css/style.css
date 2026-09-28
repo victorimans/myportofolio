@@ -956,25 +956,70 @@ main {
 }
 
 .star-form {
-    display: inline;
+    display: inline-flex;
+    margin-top: 1rem;
+}
+
+.blog-post-star {
+    margin-top: 1rem;
+}
+
+.blog-post-star .star-form {
+    margin-top: 0;
+}
+
+.project-star-total {
+    display: inline-block;
+    margin-right: 0.5rem;
 }
 
 .button-star {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    background: var(--ink);
+    gap: 0.55rem;
+    min-height: 2.6rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 250, 242, 0.9);
+    color: var(--ink);
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.button-star:hover {
+    transform: translateY(-1px);
+    border-color: var(--accent);
+    background: #fff;
+}
+
+.button-star .star-icon {
+    color: #a77a36;
+    font-size: 1.05rem;
+    line-height: 1;
 }
 
 .button-star.is-starred {
-    background: var(--accent);
+    border-color: var(--accent-dark);
+    background: var(--accent-dark);
+    color: #fffaf2;
+}
+
+.button-star.is-starred .star-icon {
+    color: #ffd782;
 }
 
 .star-count {
-    padding: 0.05rem 0.4rem;
+    min-width: 1.35rem;
+    padding: 0.1rem 0.4rem;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(39, 35, 29, 0.08);
+    text-align: center;
     font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.button-star.is-starred .star-count {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .project-delete-form {
