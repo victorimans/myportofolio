@@ -7,11 +7,12 @@ Status: In progress — profile, body sections, footer, Contact, and Blog implem
 - [x] [About section sub-plan](sections/about.md) created and aligned with the agreed direction.
 - [x] [Skills section sub-plan](sections/skills.md) created and aligned with the agreed direction.
 - [x] [Blog section sub-plan](sections/blog.md) created and aligned with the agreed direction; implementation and runtime verification are complete.
+- [x] [Projects authorization and stars specification](sections/projects-authorization-and-stars.md) created with the agreed role matrix, API contract, and acceptance criteria; implementation remains a separate task.
 - [x] Create the Projects, Journey, and Contact sub-plans when those focused sessions begin.
 
 ## Progress check
 
-Last checked: 2026-09-16
+Last checked: 2026-09-28
 
 ### Done
 
@@ -46,6 +47,7 @@ Last checked: 2026-09-16
 - [ ] Run browser verification. Django checks and runtime verification passed on 2026-09-16; no browser target is exposed for live verification.
 - [x] Implement the database-backed Blog section according to the [Blog sub-plan](sections/blog.md); the migration is applied.
 - [x] Complete Blog unit-test, server-startup, and Admin workflow verification.
+- [x] Document the Projects authorization, Editor role, and star interaction contract; no feature implementation is claimed by this documentation update.
 
 ## Follow-up session breakdown
 
@@ -69,6 +71,8 @@ Complete the remaining work as focused sessions. Each session should update the 
    - Add the project cards and their links/content.
    - Confirm the three-column desktop layout collapses to one column on mobile.
 
+   The coming-soon item above describes the static landing-page section. The database-backed `/projects/` feature has its separate authorization and star contract in [Projects authorization and stars](sections/projects-authorization-and-stars.md); completing one scope does not automatically complete the other.
+
 5. **Journey section** — intentionally kept as a coming-soon placeholder.
    - Add the academic, olympiad, coaching, and other journey milestones.
    - Keep the markup readable and verify the section spacing against the neighboring sections.
@@ -86,6 +90,11 @@ Complete the remaining work as focused sessions. Each session should update the 
 
 9. **Blog section** — implementation and runtime verification complete; live visual verification remains pending.
    - Recheck the Blog page at desktop and mobile widths when a browser target is available.
+
+10. **Projects authorization and stars** — specification agreed; implementation is pending as a separate task.
+    - Follow [Projects authorization and stars](sections/projects-authorization-and-stars.md) for the four-role capability matrix, server-side checks, Editor administration, star behavior, JSON privacy, and acceptance scenarios.
+    - Reinspect the current code before implementation; the specification records the repository baseline observed on 2026-09-28.
+    - Implement and verify the acceptance matrix, migration consistency, Django checks, and `runserver` startup in the implementation task.
 
 ## Deferred navigation item
 
