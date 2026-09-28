@@ -154,4 +154,28 @@ Setelah data diperoleh, queryset tersebut diserialisasi menggunakan `serializers
 
 Pada halaman proyek, view `show_projects` menggunakan endpoint JSON tersebut, lalu melakukan deserialization untuk mengubah data JSON kembali menjadi object Django. Object tersebut dimasukkan ke dalam context dan ditampilkan melalui template `project.html`. Dengan demikian, alurnya adalah URL mengarahkan request ke view, view mengambil data dari model, data diserialisasi menjadi JSON, JSON dikembalikan atau dideserialisasi menjadi object sesuai kebutuhan, object ditampilkan oleh template, lalu hasil akhirnya dikirimkan kembali sebagai response kepada browser.
 
+## AI Disclosure Tugas 4
+
+Pada Tugas 4, saya menggunakan OpenCode sebagai AI coding agent untuk membantu dua bagian pekerjaan: menyusun spesifikasi otorisasi dan fitur star untuk Projects, serta membantu implementasi fitur berdasarkan checklist dan dokumentasi proyek. Pada tahap penyusunan spesifikasi, AI membantu meninjau struktur kode dan dokumentasi yang sudah ada, mengidentifikasi ketidaksesuaian, mengajukan pertanyaan untuk memperjelas keputusan, lalu menyusun dan mengaudit dokumentasi. Pada tahap implementasi, AI membantu mengerjakan perubahan pada fitur Projects dan Blog, termasuk otorisasi peran Editor dan superuser, fitur star, serta penyesuaian terkait yang tercantum dalam checklist.
+
+AI digunakan sebagai alat bantu, bukan sebagai sumber kebenaran final. Beberapa keterbatasannya adalah:
+
+- AI dapat salah menafsirkan instruksi tugas atau memperluas scope fitur tanpa keputusan yang jelas;
+- AI dapat keliru membaca kondisi repository dan menganggap fitur atau perilaku tertentu sudah tersedia;
+- kode yang terlihat benar belum tentu berjalan sesuai konfigurasi Django, database, atau aturan otorisasi proyek;
+- hasil tes otomatis tidak dengan sendirinya membuktikan seluruh alur pengguna, tampilan, dan keamanan telah tervalidasi;
+- AI tidak dapat menentukan keputusan akhir mengenai kebutuhan proyek atau tanggung jawab saya atas konten dan kode.
+- Menetapkan bahwa dokumentasi spesifikasi dibuat lebih dahulu dan implementasi fitur merupakan pekerjaan terpisah;
+- Meninjau spesifikasi berdasarkan model, route, tes, dan dokumentasi proyek yang sudah ada, termasuk mencatat perilaku lama yang bertentangan dengan kontrak baru;
+- Memeriksa hasil implementasi terhadap checklist serta menjalankan 43 tes Django, pemeriksaan proyek, dan pemeriksaan konsistensi migrasi; hasil pemeriksaan tersebut dilaporkan lulus pada sesi implementasi;
+- Tidak mengklaim verifikasi visual desktop/mobile dan kontras berhasil, karena pemeriksaan tersebut tidak dapat diselesaikan pada environment sesi;
+- Mempertahankan tanggung jawab akhir atas keputusan, review, dan perubahan repository pada diri saya.
+
+Dengan demikian, AI membantu perencanaan, penyusunan dokumentasi, implementasi awal, dan pemeriksaan. Saya tetap bertanggung jawab untuk memahami hasilnya, menentukan keputusan akhir, serta memastikan klaim validasi sesuai dengan pemeriksaan yang benar-benar dilakukan.
+
+Karena percakapan dilakukan melalui OpenCode dan tidak tersedia sebagai URL share publik, ekspor sesi disertakan di repository:
+
+- [Sesi spesifikasi otorisasi, peran Editor, dan star](<docs/AI Disclosure/Tugas 4/session-ses_f17f.md>)
+- [Sesi implementasi checklist portofolio](<docs/AI Disclosure/Tugas 4/session-ses_f175.md>)
+
 
