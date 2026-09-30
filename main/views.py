@@ -137,6 +137,7 @@ def show_projects(request):
         "name": "Victoriano Iman Santosa",
         "title_query": title_query,
         "can_edit": can_edit(request.user),
+        "form": ProjectForm(),
     }
     return render(request, "project.html", context)
 

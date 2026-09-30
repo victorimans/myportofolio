@@ -14,9 +14,12 @@
                 </button>
             </p>
 
-            {% if user.is_superuser %}
+            {% if user.is_superuser and not is_detail %}
                 <p class="project-page-actions">
-                    <a href="{% url 'main:create_project' %}" class="button">Tambah Project</a>
+                    <button type="button" class="button project-add-button" popovertarget="add-project-modal">
+                        <span aria-hidden="true">+</span>
+                        Tambah Proyek
+                    </button>
                 </p>
             {% endif %}
 
@@ -97,6 +100,9 @@
         </div>
     </section>
     {% if not is_detail %}
+    {% if user.is_superuser %}
+        {% include "components/project_form_modal.html" %}
+    {% endif %}
     {{ can_edit|json_script:"project-can-edit" }}
     {{ user.is_superuser|json_script:"project-is-superuser" }}
     {{ user.is_authenticated|json_script:"project-is-authenticated" }}
@@ -109,5 +115,12 @@
          data-delete-template="{% url 'main:delete_project' '00000000-0000-0000-0000-000000000000' %}"
          data-star-template="{% url 'main:toggle_star' '00000000-0000-0000-0000-000000000000' %}"></div>
     <script defer src="{% static 'js/projects.js' %}"></script>
+    {% if user.is_superuser %}
+    <script>
+        function closeProjectModal() {
+            document.getElementById("add-project-modal").hidePopover();
+        }
+    </script>
+    {% endif %}
     {% endif %}
 {% endblock %}

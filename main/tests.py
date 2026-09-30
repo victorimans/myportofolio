@@ -550,7 +550,31 @@ class AuthorizationAcceptanceTests(TestCase):
         url = reverse("main:show_project_detail", args=[self.project.pk])
         for role, client in self.clients.items():
             with self.subTest(role=role):
-                self.assertContains(client.get(url), self.project.title)
+                response = client.get(url)
+                self.assertContains(response, self.project.title)
+                self.assertNotContains(response, 'popovertarget="add-project-modal"')
+
+    def test_add_project_modal_is_available_only_to_superuser(self):
+        create_url = reverse("main:create_project")
+        for role, client in self.clients.items():
+            with self.subTest(role=role):
+                response = client.get(reverse("main:show_projects"))
+                if role == "owner":
+                    self.assertContains(response, 'popovertarget="add-project-modal"')
+                    self.assertContains(response, 'id="add-project-modal"')
+                    self.assertContains(response, f'action="{create_url}"')
+                    self.assertContains(response, 'name="csrfmiddlewaretoken"')
+                    for field_name in (
+                        "title",
+                        "description",
+                        "tech_stack",
+                        "project_url",
+                        "project_image_url",
+                    ):
+                        self.assertContains(response, f'name="{field_name}"')
+                else:
+                    self.assertNotContains(response, 'id="add-project-modal"')
+                    self.assertNotContains(response, 'popovertarget="add-project-modal"')
 
     def test_anonymous_actions_redirect_even_for_unsupported_methods(self):
         actions = (
@@ -789,7 +813,7 @@ class AuthorizationAcceptanceTests(TestCase):
             self.assertContains(blog_page, self.post.title)
             self.assertNotContains(project_page, f"Dibintangi oleh {self.member.username}")
             self.assertNotContains(project_page, self.member.email)
-            self.assertEqual("Tambah Project" in project_page.content.decode(), role == "owner")
+            self.assertEqual("Tambah Proyek" in project_page.content.decode(), role == "owner")
             self.assertEqual(project_page.context["can_edit"], role in ("editor", "owner"))
             project_json = json.loads(client.get(reverse("main:get_projects_json")).content)
             self.assertEqual(project_json[0]["fields"]["title"], self.project.title)
