@@ -3,6 +3,7 @@ from django.urls import path
 from main.views import (
     create_blog,
     create_project,
+    create_project_ajax,
     delete_blog,
     delete_project,
     get_blog_json,
@@ -33,6 +34,7 @@ urlpatterns = [
     path("logout/", logout_user, name="logout"),
     path("projects/", show_projects, name="show_projects"),
     path("projects/add/", create_project, name="create_project"),
+    path("projects/add-ajax/", create_project_ajax, name="create_project_ajax"),
     path("projects/<uuid:id>/", show_project_detail, name="show_project_detail"),
     path("projects/<uuid:id>/edit/", update_project, name="update_project"),
     path("projects/<uuid:id>/delete/", delete_project, name="delete_project"),

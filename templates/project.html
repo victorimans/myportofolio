@@ -109,6 +109,7 @@
     <input id="project-csrf-token" type="hidden" value="{{ csrf_token }}">
     <div id="project-endpoints"
          data-json-url="{% url 'main:get_projects_json' %}"
+         data-create-url="{% url 'main:create_project_ajax' %}"
          data-login-url="{% url 'main:login' %}"
          data-detail-template="{% url 'main:show_project_detail' '00000000-0000-0000-0000-000000000000' %}"
          data-update-template="{% url 'main:update_project' '00000000-0000-0000-0000-000000000000' %}"

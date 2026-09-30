@@ -8,6 +8,7 @@
   const emptyState = document.getElementById("project-empty");
   const grid = document.getElementById("project-grid");
   const retryButton = document.getElementById("project-retry");
+  const projectForm = document.getElementById("project-form");
 
   if (!endpointElement || !searchForm || !searchInput || !loadingState || !errorState || !emptyState || !grid) {
     return;
@@ -177,6 +178,49 @@
     }
   }
 
+  function getCookie(name) {
+    const cookiePrefix = `${name}=`;
+    const cookie = document.cookie
+      .split(";")
+      .map((item) => item.trim())
+      .find((item) => item.startsWith(cookiePrefix));
+    return cookie ? decodeURIComponent(cookie.slice(cookiePrefix.length)) : null;
+  }
+
+  async function addProject(event) {
+    event.preventDefault();
+
+    const submitButton = projectForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+
+    try {
+      const response = await fetch(endpointData.createUrl, {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+        body: new FormData(projectForm),
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (response.ok) {
+        projectForm.reset();
+        closeProjectModal();
+        showToast("Berhasil", "Proyek baru berhasil ditambahkan!", "success");
+        fetchProjects(searchInput.value.trim());
+        return;
+      }
+
+      const errorMessages = result.errors
+        ? Object.values(result.errors).flat().map((error) => error.message)
+        : [result.message || `Terjadi kesalahan (status ${response.status}).`];
+      showToast("Gagal menambahkan proyek", errorMessages.join(" "), "error");
+    } catch (error) {
+      console.error("Gagal menambahkan proyek:", error);
+      showToast("Gagal menambahkan proyek", "Tidak dapat terhubung ke server. Silakan coba lagi.", "error");
+    } finally {
+      submitButton.disabled = false;
+    }
+  }
+
   function searchProjects() {
     const query = searchInput.value.trim();
     const url = new URL(window.location.href);
@@ -198,5 +242,6 @@
   });
 
   retryButton?.addEventListener("click", () => fetchProjects(searchInput.value.trim()));
+  projectForm?.addEventListener("submit", addProject);
   fetchProjects(searchInput.value.trim());
 })();

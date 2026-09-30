@@ -555,7 +555,7 @@ class AuthorizationAcceptanceTests(TestCase):
                 self.assertNotContains(response, 'popovertarget="add-project-modal"')
 
     def test_add_project_modal_is_available_only_to_superuser(self):
-        create_url = reverse("main:create_project")
+        create_url = reverse("main:create_project_ajax")
         for role, client in self.clients.items():
             with self.subTest(role=role):
                 response = client.get(reverse("main:show_projects"))
@@ -575,6 +575,73 @@ class AuthorizationAcceptanceTests(TestCase):
                 else:
                     self.assertNotContains(response, 'id="add-project-modal"')
                     self.assertNotContains(response, 'popovertarget="add-project-modal"')
+
+    def test_project_ajax_create_returns_created_project(self):
+        response = self.clients["owner"].post(reverse("main:create_project_ajax"), {
+            "title": "AJAX-created project",
+            "description": "Created without a page reload.",
+            "tech_stack": "Django",
+            "project_url": "https://example.com/project",
+            "project_image_url": "https://example.com/project.jpg",
+        })
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response["Content-Type"], "application/json")
+        payload = json.loads(response.content)
+        project = Project.objects.get(title="AJAX-created project")
+        self.assertEqual(payload, {
+            "message": "Proyek berhasil ditambahkan.",
+            "pk": str(project.pk),
+        })
+
+    def test_project_ajax_create_returns_model_form_validation_errors(self):
+        response = self.clients["owner"].post(reverse("main:create_project_ajax"), {
+            "title": "",
+            "description": "Missing title",
+            "tech_stack": "Django",
+            "project_url": "javascript:alert(1)",
+        })
+
+        self.assertEqual(response.status_code, 400)
+        payload = json.loads(response.content)
+        self.assertEqual(payload["errors"]["title"][0]["code"], "required")
+        self.assertEqual(payload["errors"]["project_url"][0]["code"], "invalid")
+        self.assertEqual(Project.objects.count(), 1)
+
+    def test_project_ajax_create_rejects_non_superusers_with_json(self):
+        url = reverse("main:create_project_ajax")
+        for role in ("anonymous", "member", "editor"):
+            with self.subTest(role=role):
+                response = self.clients[role].post(url, {"title": "Not allowed"})
+                self.assertEqual(response.status_code, 403)
+                self.assertEqual(response["Content-Type"], "application/json")
+                self.assertIn("message", json.loads(response.content))
+        self.assertEqual(Project.objects.count(), 1)
+
+    def test_project_ajax_create_is_post_only_and_requires_csrf(self):
+        url = reverse("main:create_project_ajax")
+        self.assertEqual(self.clients["owner"].get(url).status_code, 405)
+
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.owner)
+        page = client.get(reverse("main:show_projects"))
+        csrf_token = page.cookies["csrftoken"].value
+        payload = {
+            "title": "CSRF-protected project",
+            "description": "Submitted with CSRF token.",
+            "tech_stack": "Django",
+        }
+        self.assertEqual(client.post(url, payload).status_code, 403)
+        response = client.post(url, {**payload, "csrfmiddlewaretoken": csrf_token})
+        self.assertEqual(response.status_code, 201)
+
+    def test_project_modal_posts_ajax_and_loads_ajax_script(self):
+        response = self.clients["owner"].get(reverse("main:show_projects"))
+
+        self.assertContains(response, f'action="{reverse("main:create_project_ajax")}"')
+        self.assertContains(response, 'id="project-form"')
+        self.assertContains(response, 'src="/static/js/projects.js"')
+        self.assertContains(response, f'data-create-url="{reverse("main:create_project_ajax")}"')
 
     def test_anonymous_actions_redirect_even_for_unsupported_methods(self):
         actions = (
