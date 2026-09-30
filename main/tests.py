@@ -608,6 +608,61 @@ class AuthorizationAcceptanceTests(TestCase):
         self.assertEqual(payload["errors"]["project_url"][0]["code"], "invalid")
         self.assertEqual(Project.objects.count(), 1)
 
+    def test_project_ajax_rejects_title_containing_only_html_tags(self):
+        response = self.clients["owner"].post(reverse("main:create_project_ajax"), {
+            "title": '<img src="x" onerror="alert(1)">',
+            "description": "A project description",
+            "tech_stack": "Django",
+        })
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()["errors"]["title"][0]["message"],
+            "Nama proyek tidak boleh hanya berisi tag HTML.",
+        )
+        self.assertEqual(Project.objects.count(), 1)
+
+    def test_project_ajax_create_removes_markup_from_project_text(self):
+        response = self.clients["owner"].post(reverse("main:create_project_ajax"), {
+            "title": "Halo <b>dunia</b>",
+            "description": "Membangun <em>website</em>",
+            "tech_stack": "<strong>Django</strong> dan Python",
+        })
+
+        self.assertEqual(response.status_code, 201)
+        project = Project.objects.get(pk=response.json()["pk"])
+        self.assertEqual(project.title, "Halo dunia")
+        self.assertEqual(project.description, "Membangun website")
+        self.assertEqual(project.tech_stack, "Django dan Python")
+
+    def test_project_form_page_uses_same_title_validation(self):
+        response = self.clients["owner"].post(reverse("main:create_project"), {
+            "title": "<b></b>",
+            "description": "A project description",
+            "tech_stack": "Django",
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"],
+            "title",
+            "Nama proyek tidak boleh hanya berisi tag HTML.",
+        )
+        self.assertEqual(Project.objects.count(), 1)
+
+    def test_existing_project_markup_is_returned_as_data(self):
+        legacy = Project.objects.create(
+            title='<img src="x" onerror="alert(1)">',
+            description="Stored before validation was added.",
+            tech_stack="Django",
+        )
+
+        response = self.clients["anonymous"].get(reverse("main:get_projects_json"))
+
+        self.assertEqual(response.status_code, 200)
+        record = next(item for item in response.json() if item["pk"] == str(legacy.pk))
+        self.assertEqual(record["fields"]["title"], legacy.title)
+
     def test_project_ajax_create_rejects_non_superusers_with_json(self):
         url = reverse("main:create_project_ajax")
         for role in ("anonymous", "member", "editor"):

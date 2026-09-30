@@ -245,3 +245,4 @@
   projectForm?.addEventListener("submit", addProject);
   fetchProjects(searchInput.value.trim());
 })();
+
