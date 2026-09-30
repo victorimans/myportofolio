@@ -2,6 +2,7 @@
   const endpointElement = document.getElementById("project-endpoints");
   const searchForm = document.getElementById("project-search-form");
   const searchInput = document.getElementById("search-input");
+  const SEARCH_DEBOUNCE_DELAY = 300;
   const loadingState = document.getElementById("project-loading");
   const errorState = document.getElementById("project-error");
   const emptyState = document.getElementById("project-empty");
@@ -19,6 +20,7 @@
   const csrfToken = document.getElementById("project-csrf-token").value;
   const idPlaceholder = "00000000-0000-0000-0000-000000000000";
   let activeController;
+  let searchDebounceTimer;
 
   function setState(state) {
     loadingState.classList.toggle("hide", state !== "loading");
@@ -175,14 +177,24 @@
     }
   }
 
-  searchForm.addEventListener("submit", (event) => {
-    event.preventDefault();
+  function searchProjects() {
     const query = searchInput.value.trim();
     const url = new URL(window.location.href);
     if (query) url.searchParams.set("title", query);
     else url.searchParams.delete("title");
     window.history.replaceState({}, "", url);
     fetchProjects(query);
+  }
+
+  searchInput.addEventListener("input", () => {
+    window.clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = window.setTimeout(searchProjects, SEARCH_DEBOUNCE_DELAY);
+  });
+
+  searchForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    window.clearTimeout(searchDebounceTimer);
+    searchProjects();
   });
 
   retryButton?.addEventListener("click", () => fetchProjects(searchInput.value.trim()));
