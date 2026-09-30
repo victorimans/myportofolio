@@ -1,188 +1,129 @@
-# Portfolio Layout Plan
+# Portfolio Layout and Implementation
 
-Status: In progress — layout and Projects/Blog authorization are implemented; live visual verification and deferred project cards remain pending
+Status: Core implementation is present across the landing page and database-backed pages; automated verification is recorded, while live browser/responsive verification remains outstanding.
+
+Last reconciled with the repository: 2026-09-29
+
+## Scope and implementation map
+
+This document records the implemented portfolio behavior in `main/`, `portofolio/`, `templates/`, and `static/`. It describes the current repository state; it is not a list of proposed work. The source files are the implementation authority if they change.
+
+| Area | Implemented files | Current responsibility |
+| --- | --- | --- |
+| Django project configuration | `portofolio/settings.py`, `portofolio/urls.py`, `portofolio/views.py`, `portofolio/asgi.py`, `portofolio/wsgi.py` | Project settings and root routing. Root URL configuration delegates to `main.urls`; Django Admin is mounted at `/admin/`. |
+| App routes and behavior | `main/urls.py`, `main/views.py`, `main/forms.py` | Landing, authentication, Projects, Experience, Blog, mutation actions, and read-only JSON routes. |
+| Data and administration | `main/models.py`, `main/admin.py`, `main/migrations/` | Experience, Project, BlogPost, Mahasiswa records, relations, migrations, and default Django Admin registration. |
+| Shared page shell | `templates/base.html` | Document head, Bootstrap navbar, messages, footer, shared scripts, and asset loading. |
+| Landing page | `templates/index.html` | Static Profile, About, Skills, Projects/Journey placeholders, and Contact sections. |
+| Database-backed pages | `templates/project.html`, `templates/experience.html`, `templates/blog.html` | Dynamic Project list/detail, Experience list, and Blog list pages. |
+| Forms and accounts | `templates/projects_form.html`, `templates/blog_form.html`, `templates/login.html`, `templates/register.html` | Project/Blog CRUD forms and account flows. |
+| Presentation and behavior | `static/css/style.css`, `static/js/main.js`, `static/img/Victoriano_Iman_Santosa.jpg` | Shared visual system, responsive styles, sakura effect, clipboard feedback, and profile image. |
+
+## Route map
+
+Routes are mounted under the root URL by `portofolio/urls.py` and namespaced as `main`.
+
+| URL | Name | Behavior / template |
+| --- | --- | --- |
+| `/` | `main:show_main` | Static portfolio landing page, `index.html`. |
+| `/register/` | `main:register` | Django user registration, `register.html`. |
+| `/login/` | `main:login` | Login, safe local `next` handling, `login.html`. |
+| `/logout/` | `main:logout` | POST-only logout. |
+| `/projects/` | `main:show_projects` | Public database-backed Project listing and title search, `project.html`. |
+| `/projects/add/` | `main:create_project` | Superuser Project create form. |
+| `/projects/<uuid:id>/` | `main:show_project_detail` | Public Project detail rendered by `project.html`. |
+| `/projects/<uuid:id>/edit/` | `main:update_project` | Editor/superuser Project update form. |
+| `/projects/<uuid:id>/delete/` | `main:delete_project` | Superuser, POST-only deletion. |
+| `/projects/<uuid:project_id>/star/` | `main:toggle_star` | Authenticated, POST-only Project star toggle. |
+| `/experience/` | `main:show_experience` | Database-backed Experience listing, `experience.html`. |
+| `/blog/` | `main:show_blog` | Public database-backed BlogPost listing, `blog.html`. |
+| `/blog/add/` | `main:create_blog` | Superuser BlogPost create form. |
+| `/blog/<int:id>/edit/` | `main:update_blog` | Editor/superuser BlogPost update form. |
+| `/blog/<int:id>/delete/` | `main:delete_blog` | Superuser, POST-only BlogPost deletion. |
+| `/blog/<int:blog_id>/star/` | `main:toggle_blog_star` | Authenticated, POST-only BlogPost star toggle. |
+| `/api/projects/` | `main:get_projects_json` | Public Project JSON collection; optional case-insensitive title filtering. |
+| `/json/<uuid:id>/` | `main:show_json_by_id` | Public Project JSON detail. |
+| `/api/blog/` | `main:get_blog_json` | Public BlogPost JSON collection. |
+| `/api/blog/<int:id>/` | `main:show_blog_json_by_id` | Public BlogPost JSON detail. |
+| `/admin/` | Django Admin | Admin site with registered app models. |
+
+## Landing page structure
+
+`templates/index.html` extends `base.html` and contains one rendered landing page with these anchors in order:
+
+1. **Profile (`#profile`)** — name, Computer Science / Universitas Indonesia kicker, profile image, bio, NPM, degree program, and a Download CV link to a shared Google Drive PDF. The GitHub, LinkedIn, and email links in the Profile markup are currently inside an HTML comment; those channels are live in Contact. There is no Download CV item in the shared navbar.
+2. **About (`#about`)** — static English narrative and a Focus panel with Problem-solving, Teaching & mentorship, and Software, technology & impact.
+3. **Skills (`#skills`)** — three capability panels and six contextual skills spanning problem-solving/competitive programming, teaching/mentorship, and software/technology.
+4. **Projects (`#projects`)** — honest coming-soon copy plus a link to the dynamic `/projects/` page. This is distinct from the Project model and its CRUD/star workflow.
+5. **Journey (`#journey`)** — honest coming-soon copy. There is no Journey model or dynamic Journey page currently implemented.
+6. **Contact (`#contact`)** — email CTA with mailto and copy-email actions; topic labels; LinkedIn, GitHub, Codeforces, AtCoder, TLX, and Instagram grouped by purpose.
+
+The landing page receives its identity facts and bio from `show_main` in `main/views.py`; the rest of these sections are template content rather than database records.
+
+## Shared shell and visual behavior
+
+`base.html` is the root template for all page templates. It provides:
+
+- Bootstrap 5.3.3 CSS/JS, Space Grotesk from Google Fonts, Font Awesome 6.6.0, and `static/css/style.css`;
+- a fixed responsive navbar linking to landing-page anchors and the Projects, Experience, Blog, Login, and Register routes;
+- username and POST Logout controls for authenticated users, or Login/Register links for anonymous visitors;
+- an accessible message region for Django messages;
+- a footer with current year, portfolio identity, university affiliation, and Back to profile anchor;
+- the sakura background container and shared `static/js/main.js` behavior.
+
+The CSS uses a warm cream/paper, brown, purple, pink, and ink palette, a 960px content width, fixed-navbar spacing/anchor offset, shared focus-visible outlines, and a full-height flex body that pushes the footer down on short pages. The landing Profile is a two-column desktop composition that stacks at narrower widths. Shared section, card, Blog, Project, Experience, forms, navigation, footer, and contact styles live in the same stylesheet. The JavaScript skips petal generation when `prefers-reduced-motion: reduce` is active and handles Contact copy-email feedback with Clipboard API and a fallback.
+
+The previous layout notes that claim a complete contrast audit or manual live responsive QA should be treated as desired checks, not verified evidence: no browser verification is recorded here.
+
+## Data model and content lifecycle
+
+| Model | Current fields/behavior | Rendered surface |
+| --- | --- | --- |
+| `Experience` | UUID primary key; title, description, category (internship, research, volunteer, part-time, full-time, freelance), optional thumbnail URL, automatic start timestamp, optional end timestamp; `is_ongoing` derives from missing end time. | Public `/experience/` list; ongoing/finished status. No public create/update/delete form is defined in the current routes. |
+| `Project` | UUID primary key; title, description, tech stack, optional project URL and image URL; many-to-many `starred_by` relation to Django User. | Public list/detail and JSON, superuser creation/deletion, Editor/superuser update, authenticated star toggle. |
+| `BlogPost` | Automatic integer key; title, text content, category (`ai`, `dsa`, `web-development`, `career`, `personal`), optional picture URL, automatic creation timestamp, many-to-many `starred_by` relation to Django User; newest-first order with id tie-break. | Public list and JSON; superuser create/delete, Editor/superuser update, authenticated star toggle. |
+| `Mahasiswa` | `nama` and `npm`. | Registered in Django Admin; no portfolio route/template currently uses it. |
+
+Project forms write title, description, tech stack, project URL, and image URL. Blog forms write title, content, category, and picture link; id and creation time are server-managed. Blog list view uses the public JSON serialization/deserialization flow before rendering. Project and Blog stars are separate relations and separate POST routes.
+
+## Authorization behavior
+
+The shared `protected` wrapper in `main/views.py` redirects anonymous users to the named login route with the requested local path as `next`; after authentication, `login_user` validates the destination against the current host. For authenticated users, role authorization is checked before method validation; unauthorized accounts receive 403 and authorized callers using unsupported methods receive 405.
+
+| Operation | Anonymous | Authenticated regular user | Editor group | Superuser |
+| --- | --- | --- | --- | --- |
+| Public reads (landing, Projects, Experience, Blog, JSON) | Allow | Allow | Allow | Allow |
+| Create Project / BlogPost | Login redirect | 403 | 403 | Allow |
+| Update Project / BlogPost | Login redirect | 403 | Allow | Allow |
+| Delete Project / BlogPost | Login redirect | 403 | 403 | Allow |
+| Star/unstar Project or BlogPost | Login redirect | Allow | Allow | Allow |
+
+`Editor` is an exact Django Group membership check and grants update only in the public Project/Blog workflows. Registration does not assign the role. Create/delete controls are superuser-only, edit controls appear for Editors and superusers, and stars appear to authenticated visitors. Mutation forms use POST and CSRF tokens. Django Admin remains a separate staff/model-permission surface. Blog currently has star behavior in code despite an older Blog contract document that states no Blog stars; the current implementation in models, views, URLs, and template is authoritative and the documentation must reflect it.
 
 ## Sub-plan index
 
-- [x] [About section sub-plan](sections/about.md) created and aligned with the agreed direction.
-- [x] [Skills section sub-plan](sections/skills.md) created and aligned with the agreed direction.
-- [x] [Blog section sub-plan](sections/blog.md) created and aligned with the agreed direction; implementation and runtime verification are complete.
-- [x] Blog authorization and Editor-role specification added to the [Blog sub-plan](sections/blog.md); authorization implementation remains a separate task.
-- [x] [Projects authorization and stars specification](sections/projects-authorization-and-stars.md) created with the agreed role matrix, API contract, and acceptance criteria; implementation remains a separate task.
-- [x] Create the Projects, Journey, and Contact sub-plans when those focused sessions begin.
+- [x] [About section](sections/about.md) — implemented; narrative length and current copy must be checked against the live template when copy changes.
+- [x] [Skills section](sections/skills.md) — implemented as three panels with six items.
+- [x] [Projects and Journey placeholders](sections/projects-and-journey-coming-soon.md) — implemented on the landing page; Projects links to the separate dynamic Project page.
+- [x] [Contact section](sections/contacts.md) and [Contact redesign proposal](sections/contact-redesign-proposal.md) — redesign is implemented; current copy and channel groups are recorded here.
+- [x] [Blog section](sections/blog.md) — dynamic CRUD/listing, Editor authorization, public JSON, and star behavior are implemented.
+- [x] [Projects authorization and stars](sections/projects-authorization-and-stars.md) — UUID-backed public detail/list, role-gated management, JSON privacy, and star behavior are implemented.
 
-## Progress check
+## Verification record
 
-Last checked: 2026-09-28
+Repository documentation records these automated checks on 2026-09-28: Django project checks, 43 tests, migration checks, and local HTTP smoke checks passed. Earlier section notes also report JavaScript syntax and copy-email smoke checks. Treat these as historical logs, not a fresh run for this documentation-only reconciliation.
 
-### Done
+Still outstanding in the repository notes:
 
-- [x] Profile uses `#profile` and `.profile-section`.
-- [x] Related profile classes use the `profile-*` naming.
-- [x] The brand link points to `#profile`.
-- [x] The profile has a two-column desktop layout and stacks on mobile.
-- [x] The cream, brown, purple, and pink visual identity is preserved.
-- [x] The Bootstrap navbar and falling sakura effect are preserved.
-- [x] The profile content and GitHub, LinkedIn, and email links are present.
-- [x] The profile includes a `Download CV` link to the shared Google Drive PDF, opening in a new tab.
-- [x] The page remains a single Django-rendered page with static content; no view, settings, model, migration, or dependency changes are needed.
-- [x] The section anchors for About, Skills, Projects, Journey, and Contact are present.
-- [x] The page uses a full-height flex layout so the footer can stay at the bottom of short pages.
-- [x] The footer aligns its three items in a row on desktop and stacks them on mobile.
-- [x] The footer includes a Back to top link pointing to `#profile`.
-- [x] The unused AOS stylesheet, script, and `AOS.init()` call have been removed.
-- [x] Reduced-motion handling is present for smooth scrolling, transitions, and sakura animation.
-- [x] Visible focus styles are present for links and buttons.
-- [x] The Blog scope, naming, content contract, and implementation checklist are documented in the [Blog sub-plan](sections/blog.md).
+- live browser inspection at desktop and mobile widths, including collapsed navigation and all page templates;
+- visual contrast verification across all current page components;
+- manual clipboard behavior in an actual browser.
 
-### Not yet done
+## Source of truth / known doc drift resolved here
 
-- [x] Implement the About section using the [About sub-plan](sections/about.md); live browser verification remains pending.
-- [x] Add the Skills, Projects, Journey placeholder, and Contact content/layout.
-- [x] Add shared `.content-section`, `.section-grid`, heading, label, and supporting-copy styles.
-- [x] Add the responsive skills list.
-- [ ] Add project cards; Projects intentionally remains a truthful coming-soon placeholder.
-- [x] Finish the Contact call-to-action area using the Contact redesign proposal.
-- [ ] Verify readable contrast across the current palette and the completed sections.
-- [x] Add the top-navigation `Download CV` item linking to the existing shared PDF.
-- [ ] Run browser verification. Django checks, 43 tests, migration checks and local HTTP smoke checks passed on 2026-09-28; browser integration was unavailable.
-- [x] Implement the database-backed Blog section according to the [Blog sub-plan](sections/blog.md); the migration is applied.
-- [x] Complete Blog unit-test, server-startup, and Admin workflow verification.
-- [x] Document the Projects authorization, Editor role, and star interaction contract; no feature implementation is claimed by this documentation update.
-- [x] Document the Blog authorization, Editor role, and public/Admin permission boundary; no feature implementation is claimed by this documentation update.
-
-## Follow-up session breakdown
-
-Complete the remaining work as focused sessions. Each session should update the checklist above and verify its own responsive behavior before moving on.
-
-1. **Shared section foundation** — implemented; desktop/mobile visual verification remains pending.
-   - Add the reusable section container, grid, heading, label, supporting-copy, and alternating-background styles.
-   - Confirm the shared styles work at desktop and mobile widths.
-
-2. **About section** — implemented with a 199-word narrative; browser verification remains pending.
-   - Follow the [About sub-plan](sections/about.md) for the approved copy, Focus panel, layout, and acceptance criteria.
-   - Add the About copy and supporting details.
-   - Use the shared section structure and confirm the `#about` anchor lands below the fixed navbar.
-
-3. **Skills section** — implemented; browser verification remains pending.
-   - Follow the [Skills sub-plan](sections/skills.md) for the agreed categories, content, and acceptance criteria.
-   - Add the skills content and responsive skills list.
-   - Check wrapping, spacing, and readability on narrow screens.
-
-4. **Projects section** — intentionally kept as a coming-soon placeholder; project cards remain deferred.
-   - Add the project cards and their links/content.
-   - Confirm the three-column desktop layout collapses to one column on mobile.
-
-   The coming-soon item above describes the static landing-page section. The database-backed `/projects/` feature has its separate authorization and star contract in [Projects authorization and stars](sections/projects-authorization-and-stars.md); completing one scope does not automatically complete the other.
-
-5. **Journey section** — intentionally kept as a coming-soon placeholder.
-   - Add the academic, olympiad, coaching, and other journey milestones.
-   - Keep the markup readable and verify the section spacing against the neighboring sections.
-
-6. **Contact section** — implemented from the redesign proposal; browser and clipboard verification remain pending.
-   - Add the contact call-to-action and reuse the existing email/social destinations where appropriate.
-   - Confirm the CTA is clear, keyboard reachable, and readable in both themes/backgrounds.
-
-7. **Accessibility and visual polish** — static structure and reduced-motion/focus rules are present; contrast and live responsive verification remain pending.
-   - Verify semantic structure, focus states, image text, contrast, reduced motion, and fixed-navbar anchor behavior across all sections.
-
-8. **Final verification** — live browser verification remains pending.
-   - Run Django checks once the remaining verification environment is available.
-   - Verify desktop/mobile rendering, collapsed navigation, all anchors and external links, footer behavior, and browser-console errors.
-
-9. **Blog section** — implementation and runtime verification complete; live visual verification remains pending.
-   - Recheck the Blog page at desktop and mobile widths when a browser target is available.
-   - Apply the role-based Blog authorization contract in [Blog section sub-plan](sections/blog.md) as a separate implementation task.
-
-10. **Projects authorization and stars** — implemented and covered by automated tests; live visual verification pending.
-    - Follow [Projects authorization and stars](sections/projects-authorization-and-stars.md) for the four-role capability matrix, server-side checks, Editor administration, star behavior, JSON privacy, and acceptance scenarios.
-    - Reinspect the current code before implementation; the specification records the repository baseline observed on 2026-09-28.
-    - Implement and verify the acceptance matrix, migration consistency, Django checks, and `runserver` startup in the implementation task.
-
-11. **Blog authorization** — implemented and covered by automated tests; live visual verification pending.
-    - Follow the authorization, Editor, Admin boundary, JSON, and acceptance sections in [Blog section sub-plan](sections/blog.md).
-    - Reinspect current routes, views, templates, tests, and Admin permissions before implementation; the baseline in the Blog sub-plan is dated 2026-09-28.
-    - Implement and verify its four-role acceptance matrix without changing Blog's public-read/no-draft/no-star domain contract.
-
-## Deferred navigation item
-
-- Add a `Download CV` item to the top navbar after the About section is complete and the CV PDF has been created. The item must work on desktop and collapsed mobile navigation and point to the tested CV file.
-
-## Goal
-
-Refine the existing warm editorial portfolio so the profile and body sections have a complete responsive layout, while making the footer behave correctly on desktop and mobile.
-
-## Agreed direction
-
-- Keep the cream, brown, purple, and pink visual identity. 
-- Keep the existing Profile, About, Skills, Projects, Journey, and Contact sections.
-- Keep the existing profile content and external links.
-- Keep the Bootstrap navbar and falling sakura effect.
-- Keep the existing landing page as one Django-rendered page with static portfolio content. The dedicated Blog page is an approved dynamic exception backed by `BlogPost` records.
-- Preserve useful code comments and update comments that describe removed or renamed markup.
-
-## Layout changes
-
-### Profile
-
-- Rename the first section from `#home` / `.hero-section` to `#profile` / `.profile-section`.
-- Rename related `hero-*` classes to `profile-*` where they describe the profile section.
-- Point the brand and Back to top links to `#profile`.
-- Keep a two-column desktop layout with identity/details and photo, then stack them on mobile.
-
-### Body
-
-- Add the missing shared section layout rules for `.content-section`, `.section-grid`, headings, labels, and supporting copy.
-- Use consistent vertical spacing and the existing alternating tinted sections.
-- Use a responsive skills list.
-- Display projects as three cards on desktop and one column on mobile.
-- Keep the contact section as a clear call-to-action area.
-- Preserve the current container-based structure and avoid adding unnecessary JavaScript.
-
-### Footer
-
-- Make the page a full-height flex layout so the footer stays at the bottom when content is short.
-- Align copyright, university affiliation, and Back to top in one row on desktop.
-- Stack those three items cleanly on mobile.
-
-### JavaScript and accessibility
-
-- Remove the unused `AOS.init()` call because AOS is not loaded and no AOS animations are used.
-- Keep the sakura effect.
-- Respect `prefers-reduced-motion` for smooth scrolling and sakura animation.
-- Preserve semantic markup, visible focus states, descriptive image text, and readable contrast.
-
-## Files in scope
-
-- `templates/index.html`: profile naming, anchors, and comments only; preserve content.
-- `static/css/style.css`: complete body/profile/footer layout, responsive rules, and reduced-motion handling.
-- `static/js/main.js`: remove the broken AOS initialization and keep the sakura behavior.
-
-## Files intentionally out of scope for the layout work
-
-- `portofolio/views.py`: no view change is needed.
-- `portofolio/settings.py`: no Django configuration change is needed.
-- Database models, migrations, admin content, and new frontend dependencies.
-
-These exclusions apply to the layout work described above. They do not apply to the separately scoped Blog implementation, which is defined in the [Blog sub-plan](sections/blog.md).
-
-## Verification after approval
-
-- Run Django’s project checks.
-- Confirm the page renders through the Django route.
-- Check desktop and mobile widths, including the collapsed navbar.
-- Check that the footer aligns correctly, stacks on mobile, and reaches the bottom of short pages.
-- Check Profile, navigation, Back to top, email, GitHub, and LinkedIn links.
-- Check the browser console for JavaScript errors.
-
-## Verification log
-
-Checked 2026-09-07:
-
-- [x] Static structural audit: section order, anchors, Skills, Projects/Journey placeholders, Contact links, footer, reduced motion, and absence of AOS usage.
-- [x] JavaScript syntax check passed.
-- [x] Copy-email handler runtime smoke test passed with a mocked clipboard API.
-- [x] Tracked HTML element opening/closing tag counts match.
-- [x] Django check: blocked because no accessible Python interpreter is available.
-- [x] Live desktop/mobile browser verification: blocked because no browser target is available in the current environment.
-- [x] About narrative requirement: not met; the current narrative is 90 words, below the required 150–220 words.
+- The landing-page Projects and Journey areas are static placeholders; Project records are served separately at `/projects/`.
+- Experience is a separate database-backed route, not a populated Journey section.
+- Download CV is present in Profile; the shared navbar does not currently include it despite older layout-plan requirements.
+- Project and Blog stars both exist in current models/templates/views. Older Blog sub-plan statements declaring no stars are stale and are being aligned to the actual project.
+- Blog and Project create/delete are superuser-only; Editor membership enables updates; all authenticated accounts can toggle stars.
+- Contact includes Codeforces, AtCoder, TLX, and Instagram in addition to email, LinkedIn, and GitHub.

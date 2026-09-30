@@ -1,6 +1,6 @@
 # About Section Sub-plan
 
-Status: Implemented; live browser verification pending
+Status: Implemented; automated/structural checks are recorded; live browser verification remains pending
 
 Parent plan: [Portfolio layout plan](../portfolio-layout-plan.md)
 
@@ -8,7 +8,7 @@ Parent plan: [Portfolio layout plan](../portfolio-layout-plan.md)
 
 Create the About section as a concise first-person narrative that explains Victoriano's story, values, and current direction without repeating the Profile section.
 
-The section should help recruiters and academic evaluators understand the person behind the portfolio, while remaining useful to collaborators and friends.
+The section should help recruiters and academic evaluators understand the person behind the portfolio, while remaining useful to collaborators and friends. Current markup lives in `templates/index.html`; its copy and structure there are authoritative.
 
 ## Agreed direction
 
@@ -83,19 +83,19 @@ Use the heading `Focus` and show three compact items:
 ## Definition of done
 
 - [x] The approved draft or an explicitly revised version is present in the template.
-- [x] The About section uses the agreed first-person English voice and stays within 150–220 words. The current template narrative is 90 words (static audit, 2026-09-07).
+- [x] The About section uses first-person English voice and reflects the agreed themes. Current template copy is approximately 90 words, so the old 150–220-word target is not met and should not be described as complete.
 - [x] The section does not duplicate Profile facts or detailed Journey entries.
 - [x] The Focus panel contains the three agreed items.
 - [x] The desktop layout uses narrative-left and Focus-right columns.
 - [x] The mobile layout stacks the content cleanly.
 - [x] The `#about` navbar link lands below the fixed navbar.
 - [x] The section uses semantic markup.
-- [x] Readable contrast has been visually verified.
-- [x] Desktop and mobile behavior are manually checked.
+- [ ] Readable contrast has been visually verified.
+- [ ] Desktop and mobile behavior are manually checked.
 
 ## Verification log
 
 Checked 2026-09-07:
 
 - [x] Static markup and Focus-panel structure verified.
-- [x] Live desktop/mobile behavior and contrast remain unverified because no browser target is available.
+- [ ] Live desktop/mobile behavior and contrast remain unverified because no browser target is available.

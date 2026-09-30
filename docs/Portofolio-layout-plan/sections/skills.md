@@ -1,12 +1,12 @@
 # Skills Section Sub-plan
 
-Status: Implemented; live desktop/mobile verification pending
+Status: Implemented; live desktop/mobile verification remains pending
 
 Parent plan: [Portfolio layout plan](../portfolio-layout-plan.md)
 
 ## Purpose
 
-Create a concise capability section that answers what Victoriano can do. The section should help recruiters, academic evaluators, and collaborators understand his practical strengths without repeating the About narrative or the detailed achievements reserved for Journey.
+Create a concise capability section that answers what Victoriano can do. The section should help recruiters, academic evaluators, and collaborators understand his practical strengths without repeating the About narrative or the detailed achievements reserved for Journey. Current content is in `templates/index.html`; that source is authoritative.
 
 ## Agreed direction
 
@@ -80,9 +80,9 @@ Use three responsive panels or cards. Each panel should contain a category headi
 - [x] The desktop layout presents three balanced category panels.
 - [x] The mobile layout stacks the panels cleanly.
 - [x] The section uses semantic markup and accessible lists.
-- [x] Readable contrast has been visually verified.
+- [ ] Readable contrast has been visually verified.
 - [x] The `#skills` navbar link lands below the fixed navbar.
-- [x] Desktop and mobile behavior are manually checked.
+- [ ] Desktop and mobile behavior are manually checked.
 
 ## Verification log
 
@@ -90,4 +90,4 @@ Checked 2026-09-07:
 
 - [x] Static audit confirms three category panels and six skill items.
 - [x] JavaScript syntax check and tracked HTML tag-balance smoke check passed.
-- [x] Live desktop/mobile behavior remains unverified because no browser target is available.
+- [ ] Live desktop/mobile behavior remains unverified because no browser target is available.

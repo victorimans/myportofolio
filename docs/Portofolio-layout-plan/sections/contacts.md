@@ -2,7 +2,7 @@
 
 ## Status
 
-The section agreement is complete. The Contact implementation is present in the template and stylesheet. It follows the newer `contact-redesign-proposal.md` presentation, so its heading and channel grouping differ from the original contract below. Runtime QA remains pending.
+The Contact implementation is present in `templates/index.html`, `static/css/style.css`, and `static/js/main.js`. It follows `contact-redesign-proposal.md`; the current template is authoritative for exact copy and destinations. Static checks and a mocked clipboard smoke test are recorded; live browser/runtime QA remains pending.
 
 ## Purpose
 
@@ -18,27 +18,31 @@ The existing navigation link to `#contact` must continue to reach the section.
 
 ## Content contract
 
-Use the following copy:
+The original copy contract below was superseded by the implemented redesign. Current copy is:
 
 **Section label:** `Contact`
 
-**Heading:** `Let's start a conversation.`
+**Heading:** `Have an idea worth exploring?`
 
 **Invitation:**
 
-> If you have a question, an academic idea, a collaboration opportunity, a software or technology opportunity, or a mentorship-related topic to discuss, feel free to reach out.
+> Whether you want to discuss an academic idea, software and technology, a collaboration, or mentorship, email is the best place to start.
 
 The wording must remain brief, direct, warm, and professional. It must not promise availability, a response time, or a specific service.
 
 ## Contact channels
 
-Reuse the existing destinations from Profile to prevent inconsistent or outdated contact information:
+The implemented section uses these destinations:
 
 | Priority | Label | Destination | Behavior |
 | --- | --- | --- | --- |
 | Primary | Email Victoriano | `mailto:victorianoimans123@gmail.com` | Opens the visitor's email client; show the email address visibly. |
 | Secondary | LinkedIn | `https://www.linkedin.com/in/victorianoimansantosa/` | Opens the existing profile in a new tab. |
 | Secondary | GitHub | `https://github.com/victorimans` | Opens the existing profile in a new tab. |
+| Secondary | Codeforces | `https://codeforces.com/profile/kukuk` | Competitive-programming profile. |
+| Secondary | AtCoder | `https://atcoder.jp/users/kukuk` | Competitive-programming profile. |
+| Secondary | TLX | `https://tlx.toki.id/profiles/kukuk` | Competitive-programming profile. |
+| Secondary | Instagram | `https://www.instagram.com/victorianoimans/` | Personal profile. |
 
 Do not repeat the CV download in Contact. CV discovery remains in Profile.
 
@@ -104,7 +108,7 @@ Do not repeat the CV download in Contact. CV discovery remains in Profile.
 ### QA
 
 - [x] Run `python manage.py check`. Attempted 2026-09-07, but no accessible Python interpreter is available.
-- [x] Inspect the section at desktop and mobile widths; no browser target is available.
+- [ ] Inspect the section at desktop and mobile widths; no browser target is available.
 - [x] Verify the navbar `#contact` link and section order with a static audit.
 - [x] Verify the email, LinkedIn, and GitHub destinations with a static audit.
 - [x] Verify visible labels, keyboard focus styling, and reading order from the markup/CSS.
@@ -112,8 +116,8 @@ Do not repeat the CV download in Contact. CV discovery remains in Profile.
 
 ### Final verification
 
-- [x] Review the rendered page for layout, spacing, contrast, and overflow issues.
-- [x] Mark this checklist complete only after implementation and QA pass.
+- [ ] Review the rendered page for layout, spacing, contrast, and overflow issues.
+- [ ] Mark this checklist complete only after implementation and QA pass.
 
 ## Verification log
 
@@ -122,4 +126,4 @@ Checked 2026-09-07:
 - [x] Static audit confirms the Contact structure, primary email destination, LinkedIn/GitHub destinations, channel grouping, and copy button wiring.
 - [x] JavaScript syntax check passed.
 - [x] Copy-email handler runtime smoke test passed with a mocked clipboard API.
-- [x] Django check, live rendering, live clipboard behavior, and desktop/mobile QA remain pending.
+- [ ] Django check, live rendering, live clipboard behavior, and desktop/mobile QA remain pending (Django checks are separately recorded as passing in the root plan on 2026-09-28).
