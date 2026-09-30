@@ -7,6 +7,11 @@
         <div class="container">
             <p class="section-kicker">Karya yang saya bangun</p>
             <h1 id="projects-heading">Projects</h1>
+            <p class="project-page-actions">
+                <button type="button" class="button button-secondary" onclick="showToast('Notifikasi Sistem', 'Project berhasil dimuat dengan baik!', 'success')">
+                    Test Toast Notifikasi
+                </button>
+            </p>
 
             {% if user.is_superuser %}
                 <p class="project-page-actions">
