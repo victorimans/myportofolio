@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Projects - {{ name }}{% endblock %}
 
@@ -20,11 +21,11 @@
             {% endif %}
 
             {% if not is_detail %}
-            <form method="get" class="project-search-form" role="search">
-                <label for="project-title-search">Cari project berdasarkan judul</label>
+            <form id="project-search-form" class="project-search-form" role="search">
+                <label for="search-input">Cari project berdasarkan judul</label>
                 <div class="project-search-controls">
                     <input
-                        id="project-title-search"
+                        id="search-input"
                         name="title"
                         type="search"
                         value="{{ title_query }}"
@@ -35,6 +36,7 @@
             </form>
             {% endif %}
 
+            {% if is_detail %}
             <div class="experience-grid project-grid">
                 {% for project in project_list %}
                     <article class="experience-card project-card">
@@ -81,6 +83,31 @@
                     <p class="empty-state">Belum ada proyek yang ditambahkan.</p>
                 {% endfor %}
             </div>
+            {% else %}
+            <div id="project-loading" class="empty-state" role="status" aria-live="polite">
+                <p>Memuat proyek...</p>
+            </div>
+            <div id="project-error" class="empty-state hide" role="alert">
+                <p>Gagal memuat data proyek. Silakan coba lagi.</p>
+                <button id="project-retry" type="button" class="button">Coba lagi</button>
+            </div>
+            <p id="project-empty" class="empty-state hide">Belum ada proyek yang ditambahkan atau ditemukan.</p>
+            <div id="project-grid" class="experience-grid project-grid hide" aria-live="polite"></div>
+            {% endif %}
         </div>
     </section>
+    {% if not is_detail %}
+    {{ can_edit|json_script:"project-can-edit" }}
+    {{ user.is_superuser|json_script:"project-is-superuser" }}
+    {{ user.is_authenticated|json_script:"project-is-authenticated" }}
+    <input id="project-csrf-token" type="hidden" value="{{ csrf_token }}">
+    <div id="project-endpoints"
+         data-json-url="{% url 'main:get_projects_json' %}"
+         data-login-url="{% url 'main:login' %}"
+         data-detail-template="{% url 'main:show_project_detail' '00000000-0000-0000-0000-000000000000' %}"
+         data-update-template="{% url 'main:update_project' '00000000-0000-0000-0000-000000000000' %}"
+         data-delete-template="{% url 'main:delete_project' '00000000-0000-0000-0000-000000000000' %}"
+         data-star-template="{% url 'main:toggle_star' '00000000-0000-0000-0000-000000000000' %}"></div>
+    <script defer src="{% static 'js/projects.js' %}"></script>
+    {% endif %}
 {% endblock %}

@@ -101,7 +101,7 @@ class MainTest(TestCase):
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]["pk"], str(matching_project.pk))
 
-    def test_projects_page_uses_filtered_json_response(self):
+    def test_projects_page_loads_projects_through_ajax(self):
         matching_project = Project.objects.create(
             title="Portfolio Website",
             description="A Django portfolio website.",
@@ -119,11 +119,39 @@ class MainTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, matching_project.title)
+        self.assertNotContains(response, matching_project.title)
         self.assertNotContains(response, "Unrelated Project")
         self.assertEqual(response.context["title_query"], "portfolio")
         self.assertContains(response, 'value="portfolio"')
-        self.assertContains(response, 'name="title"')
+        self.assertContains(response, 'id="project-search-form"')
+        self.assertContains(response, 'id="project-grid"')
+        self.assertContains(response, reverse("main:get_projects_json"))
+
+    def test_projects_json_includes_star_count_and_current_users_star_state(self):
+        project = Project.objects.create(
+            title="Starred project",
+            description="A project with private star membership.",
+            tech_stack="Django",
+        )
+        owner = get_user_model().objects.create_user(username="star-owner", password="password")
+        other_user = get_user_model().objects.create_user(username="star-other", password="password")
+        project.starred_by.add(owner)
+
+        owner_client = Client()
+        owner_client.force_login(owner)
+        for client, expected_starred in ((self.client, False), (owner_client, True)):
+            with self.subTest(is_starred=expected_starred):
+                response = client.get(reverse("main:get_projects_json"))
+                data = json.loads(response.content)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(len(data), 1)
+                self.assertEqual(data[0]["pk"], str(project.pk))
+                self.assertEqual(data[0]["fields"]["star_count"], 1)
+                self.assertEqual(data[0]["fields"]["is_starred"], expected_starred)
+                self.assertNotIn("starred_by_names", data[0]["fields"])
+                self.assertNotIn(owner.username, response.content.decode())
+                self.assertNotIn(other_user.username, response.content.decode())
 
     def test_project_writes_require_superuser(self):
         project = Project.objects.create(
@@ -508,7 +536,12 @@ class AuthorizationAcceptanceTests(TestCase):
         for role, client in self.clients.items():
             for url, title in routes:
                 with self.subTest(role=role, url=url):
-                    self.assertContains(client.get(url), title)
+                    response = client.get(url)
+                    if url == reverse("main:show_projects"):
+                        self.assertContains(response, 'id="project-grid"')
+                        self.assertNotContains(response, title)
+                    else:
+                        self.assertContains(response, title)
         self.assertEqual(self.clients["anonymous"].get(
             reverse("main:show_blog_json_by_id", args=[self.post.pk + 1000])
         ).status_code, 404)
@@ -682,7 +715,8 @@ class AuthorizationAcceptanceTests(TestCase):
             self.assertRedirects(client.post(url), reverse("main:show_projects"))
             self.assertEqual(self.project.starred_by.filter(pk=user.pk).count(), 1)
             self.assertEqual(other.starred_by.count(), 0)
-            self.assertContains(client.get(reverse("main:show_projects")), "Unstar")
+            data = json.loads(client.get(reverse("main:get_projects_json")).content)
+            self.assertTrue(next(item for item in data if item["pk"] == str(self.project.pk))["fields"]["is_starred"])
             self.assertRedirects(client.post(url), reverse("main:show_projects"))
             self.assertFalse(self.project.starred_by.filter(pk=user.pk).exists())
         self.assertEqual(self.project.starred_by.count(), 0)
@@ -707,8 +741,9 @@ class AuthorizationAcceptanceTests(TestCase):
         client = Client(enforce_csrf_checks=True)
         client.force_login(self.member)
         page = client.get(reverse("main:show_projects"))
-        self.assertContains(page, "star-count")
-        self.assertContains(page, "0 stars")
+        self.assertContains(page, 'id="project-grid"')
+        data = json.loads(client.get(reverse("main:get_projects_json")).content)
+        self.assertEqual(data[0]["fields"]["star_count"], 0)
         token = page.cookies["csrftoken"].value
         self.assertRedirects(client.post(url, {"csrfmiddlewaretoken": token}), reverse("main:show_projects"))
         self.assertEqual(self.project.starred_by.filter(pk=self.member.pk).count(), 1)
@@ -749,14 +784,17 @@ class AuthorizationAcceptanceTests(TestCase):
         for role, client in self.clients.items():
             project_page = client.get(reverse("main:show_projects"))
             blog_page = client.get(reverse("main:show_blog"))
-            self.assertContains(project_page, self.project.title)
+            self.assertContains(project_page, 'id="project-grid"')
+            self.assertNotContains(project_page, self.project.title)
             self.assertContains(blog_page, self.post.title)
-            self.assertContains(project_page, "star-count")
             self.assertNotContains(project_page, f"Dibintangi oleh {self.member.username}")
             self.assertNotContains(project_page, self.member.email)
             self.assertEqual("Tambah Project" in project_page.content.decode(), role == "owner")
-            self.assertEqual("Hapus Project" in project_page.content.decode(), role == "owner")
-            self.assertEqual("Edit Project" in project_page.content.decode(), role in ("editor", "owner"))
+            self.assertEqual(project_page.context["can_edit"], role in ("editor", "owner"))
+            project_json = json.loads(client.get(reverse("main:get_projects_json")).content)
+            self.assertEqual(project_json[0]["fields"]["title"], self.project.title)
+            self.assertEqual(project_json[0]["fields"]["star_count"], 1)
+            self.assertEqual(project_json[0]["fields"]["is_starred"], role == "member")
             self.assertEqual("Tambah Blog" in blog_page.content.decode(), role == "owner")
             self.assertEqual("Edit Blog" in blog_page.content.decode(), role in ("editor", "owner"))
             self.assertEqual("Hapus Blog" in blog_page.content.decode(), role == "owner")
@@ -773,8 +811,8 @@ class AuthorizationAcceptanceTests(TestCase):
                 self.assertNotContains(project_page, 'action="' + reverse("main:toggle_star", args=[self.project.pk]) + '"')
                 self.assertContains(project_page, reverse("main:login"))
             else:
-                self.assertContains(project_page, 'action="' + reverse("main:toggle_star", args=[self.project.pk]) + '"')
-                self.assertContains(project_page, "csrfmiddlewaretoken")
+                self.assertContains(project_page, f'data-star-template="{reverse("main:toggle_star", args=["00000000-0000-0000-0000-000000000000"])}"')
+                self.assertContains(project_page, 'id="project-csrf-token"')
         for client in self.clients.values():
             for url in (reverse("main:get_blog_json"), reverse("main:show_blog_json_by_id", args=[self.post.pk])):
                 fields = json.loads(client.get(url).content)[0]["fields"]

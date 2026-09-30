@@ -8,7 +8,7 @@ from django.core import serializers
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Count, Exists, OuterRef
-from django.http import HttpResponse, HttpResponseNotAllowed
+from django.http import HttpResponse, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -132,17 +132,9 @@ def show_experience(request):
 
 @require_GET
 def show_projects(request):
-    json_response = get_projects_json(request)
-    projects = serializers.deserialize(
-        "json",
-        json_response.content.decode("utf-8"),
-    )
-    project_ids = [project.object.pk for project in projects]
     title_query = request.GET.get("title", "").strip()
-    projects = list(projects_for_user(request.user).filter(pk__in=project_ids))
     context = {
         "name": "Victoriano Iman Santosa",
-        "project_list": projects,
         "title_query": title_query,
         "can_edit": can_edit(request.user),
     }
@@ -212,13 +204,27 @@ def update_project(request, id):
 @require_GET
 def get_projects_json(request):
     title_query = request.GET.get("title", "").strip()
-    projects = Project.objects.all()
+    projects = projects_for_user(request.user)
 
     if title_query:
         projects = projects.filter(title__icontains=title_query)
 
-    projects_json = serializers.serialize("json", projects, fields=["title", "description", "tech_stack", "project_url", "project_image_url"])
-    return HttpResponse(projects_json, content_type="application/json")
+    data = [
+        {
+            "pk": str(project.pk),
+            "fields": {
+                "title": project.title,
+                "description": project.description,
+                "tech_stack": project.tech_stack,
+                "project_url": project.project_url,
+                "project_image_url": project.project_image_url,
+                "star_count": project.star_count,
+                "is_starred": getattr(project, "is_starred", False),
+            },
+        }
+        for project in projects
+    ]
+    return JsonResponse(data, safe=False)
 
 
 @require_GET

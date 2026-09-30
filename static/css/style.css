@@ -907,6 +907,22 @@ main {
     grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
 }
 
+.hide {
+    display: none !important;
+}
+
+.project-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.project-actions .star-form,
+.project-actions .project-delete-form {
+    margin-top: 0;
+}
+
 .project-page-actions {
     margin-bottom: 1.5rem;
 }
