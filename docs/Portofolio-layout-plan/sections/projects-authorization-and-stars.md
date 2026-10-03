@@ -1,6 +1,6 @@
 # Projects: Pages, Authorization, and Stars
 
-Status: Implemented; automated verification recorded 2026-09-28; live browser verification remains pending.
+Status: Implemented, including AJAX listing/search and superuser create modal; automated verification recorded in repository notes; live browser verification remains pending.
 
 Parent plan: [Portfolio layout and implementation](../portfolio-layout-plan.md)
 
@@ -9,9 +9,9 @@ Parent plan: [Portfolio layout and implementation](../portfolio-layout-plan.md)
 “Projects” appears in two separate parts of the product:
 
 1. The static landing-page section at `/#projects` is a coming-soon placeholder with a link to `/projects/`.
-2. The database-backed Project feature is implemented with list/detail pages, JSON reads, create/update/delete actions, search, and stars.
+2. The database-backed Project feature is implemented with list/detail pages, JSON reads, AJAX listing/search, create/update/delete actions, a superuser create modal, and stars.
 
-This document describes the second feature. Its current implementation is found in `main/models.py`, `main/forms.py`, `main/views.py`, `main/urls.py`, `templates/project.html`, `templates/projects_form.html`, and the shared stylesheet.
+This document describes the second feature. Its current implementation is found in `main/models.py`, `main/forms.py`, `main/views.py`, `main/urls.py`, `templates/project.html`, `templates/projects_form.html`, `templates/components/project_form_modal.html`, `static/js/projects.js`, `static/js/toast.js`, and the shared stylesheet.
 
 ## Data model and form
 
@@ -28,6 +28,8 @@ This document describes the second feature. Its current implementation is found 
 
 `ProjectForm` excludes the primary key and `starred_by`, so editing Project content cannot directly change star membership.
 
+The form strips HTML tags from `title`, `description`, and `tech_stack`; a title that becomes empty after stripping is rejected. The AJAX renderer builds card content using DOM APIs and `textContent` instead of interpolating Project text into HTML, preserving text-safe rendering for fetched records.
+
 ## Routes and page behavior
 
 | URL | Name | Method/visibility | Behavior |
@@ -35,13 +37,14 @@ This document describes the second feature. Its current implementation is found 
 | `/projects/` | `main:show_projects` | Public GET | Shows projects, optional `?title=` case-insensitive title search, star counts and role-appropriate controls. |
 | `/projects/<uuid:id>/` | `main:show_project_detail` | Public GET | Renders one project using `project.html` in detail mode. |
 | `/projects/add/` | `main:create_project` | Superuser GET/POST | Form display and Project creation. |
+| `/projects/add-ajax/` | `main:create_project_ajax` | Superuser POST | AJAX create endpoint used by the add-project popover; returns JSON success or validation errors. |
 | `/projects/<uuid:id>/edit/` | `main:update_project` | Editor/superuser GET/POST | Form display and content update. |
 | `/projects/<uuid:id>/delete/` | `main:delete_project` | Superuser POST | Deletes the Project and redirects to list. |
 | `/projects/<uuid:project_id>/star/` | `main:toggle_star` | Authenticated POST | Atomically toggles current user's membership; redirects to list. |
-| `/api/projects/` | `main:get_projects_json` | Public GET | JSON collection with optional title filter. |
+| `/api/projects/` | `main:get_projects_json` | Public GET | JSON collection with optional title filter; includes star count and the requesting user's own star state when authenticated. |
 | `/json/<uuid:id>/` | `main:show_json_by_id` | Public GET | One JSON Project or 404. |
 
-Successful form writes use redirects (Post/Redirect/Get). Unknown UUIDs return 404. Public JSON serializes Project content fields only and does not disclose star membership/user information.
+The `/projects/` list loads asynchronously from `/api/projects/`. Search is debounced by 300 ms, can abort an in-flight superseded fetch, and updates the query string without full-page navigation. Loading, error/retry, and empty states are rendered. Superusers create from the listing popover/modal via AJAX; successful creation resets/closes the modal, shows a toast, and reloads the current filtered list. The traditional `/projects/add/` route remains available. Successful traditional form writes use redirects (Post/Redirect/Get). Unknown UUIDs return 404. Public JSON does not disclose user identities or individual star memberships; the list endpoint includes aggregate count and the authenticated caller's own membership state so the UI can show their control state.
 
 ## Authorization contract as implemented
 

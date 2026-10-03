@@ -2,7 +2,7 @@
 
 Status: Core implementation is present across the landing page and database-backed pages; automated verification is recorded, while live browser/responsive verification remains outstanding.
 
-Last reconciled with the repository: 2026-09-29
+Last reconciled with the repository: 2026-10-03
 
 ## Scope and implementation map
 
@@ -16,8 +16,8 @@ This document records the implemented portfolio behavior in `main/`, `portofolio
 | Shared page shell | `templates/base.html` | Document head, Bootstrap navbar, messages, footer, shared scripts, and asset loading. |
 | Landing page | `templates/index.html` | Static Profile, About, Skills, Projects/Journey placeholders, and Contact sections. |
 | Database-backed pages | `templates/project.html`, `templates/experience.html`, `templates/blog.html` | Dynamic Project list/detail, Experience list, and Blog list pages. |
-| Forms and accounts | `templates/projects_form.html`, `templates/blog_form.html`, `templates/login.html`, `templates/register.html` | Project/Blog CRUD forms and account flows. |
-| Presentation and behavior | `static/css/style.css`, `static/js/main.js`, `static/img/Victoriano_Iman_Santosa.jpg` | Shared visual system, responsive styles, sakura effect, clipboard feedback, and profile image. |
+| Forms and accounts | `templates/projects_form.html`, `templates/components/project_form_modal.html`, `templates/blog_form.html`, `templates/login.html`, `templates/register.html` | Project/Blog CRUD forms, AJAX Project modal, and account flows. |
+| Presentation and behavior | `static/css/style.css`, `static/js/main.js`, `static/js/projects.js`, `static/js/toast.js`, `static/img/Victoriano_Iman_Santosa.jpg` | Shared visual system, responsive styles, AJAX Project listing/form behavior, toast notifications, sakura effect, clipboard feedback, and profile image. |
 
 ## Route map
 
@@ -29,21 +29,23 @@ Routes are mounted under the root URL by `portofolio/urls.py` and namespaced as 
 | `/register/` | `main:register` | Django user registration, `register.html`. |
 | `/login/` | `main:login` | Login, safe local `next` handling, `login.html`. |
 | `/logout/` | `main:logout` | POST-only logout. |
-| `/projects/` | `main:show_projects` | Public database-backed Project listing and title search, `project.html`. |
+| `/projects/` | `main:show_projects` | Public database-backed Project listing and title search, `project.html`; listing data is fetched asynchronously from `/api/projects/`. |
 | `/projects/add/` | `main:create_project` | Superuser Project create form. |
+| `/projects/add-ajax/` | `main:create_project_ajax` | Superuser, POST-only Project create endpoint used by the listing modal; returns JSON success/errors. |
 | `/projects/<uuid:id>/` | `main:show_project_detail` | Public Project detail rendered by `project.html`. |
 | `/projects/<uuid:id>/edit/` | `main:update_project` | Editor/superuser Project update form. |
 | `/projects/<uuid:id>/delete/` | `main:delete_project` | Superuser, POST-only deletion. |
 | `/projects/<uuid:project_id>/star/` | `main:toggle_star` | Authenticated, POST-only Project star toggle. |
 | `/experience/` | `main:show_experience` | Database-backed Experience listing, `experience.html`. |
-| `/blog/` | `main:show_blog` | Public database-backed BlogPost listing, `blog.html`. |
-| `/blog/add/` | `main:create_blog` | Superuser BlogPost create form. |
+| `/blog/` | `main:show_blog` | Public database-backed BlogPost page, `blog.html`; Assignment 5 target is a shell with AJAX-loaded list, title search, and superuser create modal. Current source still server-renders the list. |
+| `/blog/add/` | `main:create_blog` | Current traditional superuser BlogPost create form; target AJAX modal flow may retain this route only for compatibility. |
+| `/blog/add-ajax/` | Planned Assignment 5 route | Target superuser-only POST create endpoint returning JSON with 201/400/403 responses; not present in current source. |
 | `/blog/<int:id>/edit/` | `main:update_blog` | Editor/superuser BlogPost update form. |
 | `/blog/<int:id>/delete/` | `main:delete_blog` | Superuser, POST-only BlogPost deletion. |
 | `/blog/<int:blog_id>/star/` | `main:toggle_blog_star` | Authenticated, POST-only BlogPost star toggle. |
-| `/api/projects/` | `main:get_projects_json` | Public Project JSON collection; optional case-insensitive title filtering. |
+| `/api/projects/` | `main:get_projects_json` | Public Project JSON collection; optional case-insensitive title filtering; includes total star count and, for authenticated callers, their own starred state, but no user identities. |
 | `/json/<uuid:id>/` | `main:show_json_by_id` | Public Project JSON detail. |
-| `/api/blog/` | `main:get_blog_json` | Public BlogPost JSON collection. |
+| `/api/blog/` | `main:get_blog_json` | Current public BlogPost JSON collection; Assignment 5 target is manually composed JSON with title filtering, star_count, and caller-specific is_starred. Current source still uses Django serialization and omits these fields. |
 | `/api/blog/<int:id>/` | `main:show_blog_json_by_id` | Public BlogPost JSON detail. |
 | `/admin/` | Django Admin | Admin site with registered app models. |
 
@@ -84,7 +86,7 @@ The previous layout notes that claim a complete contrast audit or manual live re
 | `BlogPost` | Automatic integer key; title, text content, category (`ai`, `dsa`, `web-development`, `career`, `personal`), optional picture URL, automatic creation timestamp, many-to-many `starred_by` relation to Django User; newest-first order with id tie-break. | Public list and JSON; superuser create/delete, Editor/superuser update, authenticated star toggle. |
 | `Mahasiswa` | `nama` and `npm`. | Registered in Django Admin; no portfolio route/template currently uses it. |
 
-Project forms write title, description, tech stack, project URL, and image URL. Blog forms write title, content, category, and picture link; id and creation time are server-managed. Blog list view uses the public JSON serialization/deserialization flow before rendering. Project and Blog stars are separate relations and separate POST routes.
+Project forms write title, description, tech stack, project URL, and image URL. `ProjectForm` strips HTML tags from title, description, and tech stack and rejects a title that is empty after stripping; the AJAX card renderer inserts text through text-safe DOM APIs. The listing fetches JSON asynchronously, debounces title-search input by 300 ms, aborts superseded fetches, updates the query string without navigation, and exposes loading, error/retry, and empty states. The superuser popover modal submits to `/projects/add-ajax/`, shows field/server errors, and refreshes the current listing after success; the traditional `/projects/add/` route remains available. Blog forms write title, content, category, and picture link; id and creation time are server-managed. Blog list view uses the public JSON serialization/deserialization flow before rendering. Project and Blog stars are separate relations and separate POST routes.
 
 ## Authorization behavior
 
@@ -98,7 +100,7 @@ The shared `protected` wrapper in `main/views.py` redirects anonymous users to t
 | Delete Project / BlogPost | Login redirect | 403 | 403 | Allow |
 | Star/unstar Project or BlogPost | Login redirect | Allow | Allow | Allow |
 
-`Editor` is an exact Django Group membership check and grants update only in the public Project/Blog workflows. Registration does not assign the role. Create/delete controls are superuser-only, edit controls appear for Editors and superusers, and stars appear to authenticated visitors. Mutation forms use POST and CSRF tokens. Django Admin remains a separate staff/model-permission surface. Blog currently has star behavior in code despite an older Blog contract document that states no Blog stars; the current implementation in models, views, URLs, and template is authoritative and the documentation must reflect it.
+`Editor` is an exact Django Group membership check and grants update only in the public Project/Blog workflows. Registration does not assign the role. Create/delete controls are superuser-only, edit controls appear for Editors and superusers, and stars appear to authenticated visitors. Mutation forms use POST and CSRF tokens. Django Admin remains a separate staff/model-permission surface. The Project collection JSON includes star count and only the requesting authenticated user's own star state; it does not reveal star-user identities. Blog collection JSON exposes post content fields only, not star counts, membership, or account details. Blog currently has star behavior in code despite an older Blog contract document that states no Blog stars; the current implementation in models, views, URLs, and template is authoritative and the documentation must reflect it.
 
 ## Sub-plan index
 
@@ -106,7 +108,7 @@ The shared `protected` wrapper in `main/views.py` redirects anonymous users to t
 - [x] [Skills section](sections/skills.md) — implemented as three panels with six items.
 - [x] [Projects and Journey placeholders](sections/projects-and-journey-coming-soon.md) — implemented on the landing page; Projects links to the separate dynamic Project page.
 - [x] [Contact section](sections/contacts.md) and [Contact redesign proposal](sections/contact-redesign-proposal.md) — redesign is implemented; current copy and channel groups are recorded here.
-- [x] [Blog section](sections/blog.md) — dynamic CRUD/listing, Editor authorization, public JSON, and star behavior are implemented.
+- [ ] [Blog section](sections/blog.md) — documents current behavior and Assignment 5 AJAX/search/modal/XSS target; AJAX list/create and server-side tag stripping remain unimplemented in current source.
 - [x] [Projects authorization and stars](sections/projects-authorization-and-stars.md) — UUID-backed public detail/list, role-gated management, JSON privacy, and star behavior are implemented.
 
 ## Verification record

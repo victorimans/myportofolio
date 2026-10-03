@@ -1,10 +1,10 @@
 # Contact Redesign Proposal
 
-**Status:** Implemented in the current template; live browser and clipboard verification pending  
-**Scope:** Contact section only  
+**Status:** Implemented in the current template; live browser and clipboard verification pending. This file records the design rationale and proposed acceptance criteria, not a backlog of unimplemented work.
+**Scope:** Contact section only
 **Implementation:** Present in `templates/index.html`, `static/css/style.css`, and `static/js/main.js`. The repository does not record formal approval of this proposal, so review remains an outstanding documentation item.
 
-The current implementation uses the recommended options from Round 2, but implementation should not be treated as proof that the proposal was formally approved.
+The current implementation follows the recommended options recorded in Round 2. The repository does not record formal approval of the proposal; implementation alone is not evidence of that approval.
 
 ## 1. Problem
 
@@ -170,9 +170,9 @@ The implementation will be considered aligned with this proposal when:
 - the layout remains usable on mobile; and
 - no contact form, response-time promise, or unsupported availability claim is introduced.
 
-## 8. Round 2 — decisions for review
+## 8. Round 2 — design rationale
 
-These decisions are intentionally left open until this draft is reviewed.
+The questions below document the choices considered during planning. They are not open implementation decisions: the current page follows the listed recommendations. Formal approval remains unrecorded.
 
 ### Q1 — Heading copy
 
@@ -226,5 +226,5 @@ Checked 2026-09-07:
 - [x] Copy-email handler runtime smoke test passed with a mocked clipboard API.
 - [x] LinkedIn/GitHub, competitive-programming profiles, and Instagram are grouped by purpose.
 - [x] The Contact section uses the existing visual language and does not add a form, response-time promise, or unsupported availability claim.
-- [x] Desktop/mobile layout, keyboard interaction, live clipboard behavior, and rendered contrast are not yet live-verified.
+- [ ] Desktop/mobile layout, keyboard interaction, live clipboard behavior, and rendered contrast have not been live-verified.
 - [x] Formal proposal approval is not recorded in the repository.
