@@ -120,6 +120,7 @@ All complete pages extend `templates/base.html`, which provides shared assets, t
 - [x] Send CSRF token with the modal request.
 - [x] Refresh the displayed list after successful creation without navigation.
 - [x] Reuse shared toast helper for successful creation and authorization/validation/network errors.
+- [x] Display server validation messages with field labels in the error toast; preserve form input on failure.
 - [ ] Strip tags in `clean_title` and `clean_content`; reject an empty-after-cleaning title.
 - [x] Preserve exact Editor update-only and superuser create/delete permissions, plus authenticated star behavior.
 - [x] Confirm all roles, including anonymous users, can load public Blog data.
@@ -129,6 +130,8 @@ All complete pages extend `templates/base.html`, which provides shared assets, t
 - [ ] Test an XSS payload such as `<img src="x" onerror="alert('XSS!')">`; verify no executable markup or alert appears.
 
 ## Current verification record
+
+The 2026-10-04 toast-only review confirmed that Blog creation already calls the shared `showToast` for success and failures, including field-labeled server validation messages. No application changes were needed. A temporary Node VM harness executing read-source copies of `addBlog` and `showToast` passed 12 verification groups covering `201` success/default messages, `400` multi-field validation, `403` authorization, `500` and invalid-JSON fallback, network errors, text-safe messages, toast classes, and dismissal timers. Failure scenarios retained form input. DOM, FormData, Fetch, popovers, timers, and list refresh were mocked; this does not establish live-browser rendering. Django checks/tests were not rerun for this documentation-only update; their previous results remain recorded below. Unrelated checklist items remain unchanged.
 
 The 2026-10-04 modal/AJAX creation implementation was verified with `python manage.py check` (two existing W042 warnings), all 72 Django tests passing, `node --check static/js/blog.js`, and `git diff --check`. Added tests cover superuser-only modal visibility, ModelForm validation, JSON `201`/`400`/`403`, server-side permission revocation, POST-only behavior, CSRF enforcement, public search visibility of created records, and ignored server-managed inputs. A temporary Node VM check with mocked DOM/FormData/fetch/timers verified successful reset/close/toast and current-query refresh, duplicate-submit prevention, validation/authorization/server/network feedback with retained form state, CSRF inclusion, and submit-button recovery. This is not live-browser verification. Server-side Blog form tag stripping and manual browser/XSS checks remain outstanding. The records below describe earlier implementation stages.
 
