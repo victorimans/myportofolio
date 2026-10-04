@@ -1,6 +1,6 @@
 # Blog: Assignment 5 Interactivity Specification
 
-Status: AJAX listing and case-insensitive partial-title search with 300 ms debounce are implemented. Superuser modal creation with CSRF-protected AJAX POST, JSON validation/authorization responses, shared toast feedback, and query-preserving list refresh is implemented. Server-side Blog form tag stripping and live browser verification remain outstanding. Source and this status were reconciled on 2026-10-04. The checklist distinguishes implemented behavior from outstanding work and browser verification.
+Status: AJAX listing and case-insensitive partial-title search with 300 ms debounce are implemented. Superuser modal creation with CSRF-protected AJAX POST, JSON validation/authorization responses, shared toast feedback, and query-preserving list refresh is implemented. Server-side Blog form tag stripping and text-safe JavaScript rendering are implemented. Live browser verification remains outstanding. Source and this status were reconciled on 2026-10-04. The checklist distinguishes implemented behavior from outstanding work and browser verification.
 
 Parent plan: [Portfolio layout and implementation](../portfolio-layout-plan.md)
 
@@ -121,15 +121,19 @@ All complete pages extend `templates/base.html`, which provides shared assets, t
 - [x] Refresh the displayed list after successful creation without navigation.
 - [x] Reuse shared toast helper for successful creation and authorization/validation/network errors.
 - [x] Display server validation messages with field labels in the error toast; preserve form input on failure.
-- [ ] Strip tags in `clean_title` and `clean_content`; reject an empty-after-cleaning title.
+- [x] Strip tags in `clean_title` and `clean_content`; reject an empty-after-cleaning title.
+- [x] Reject content that becomes empty after tag stripping; preserve plain-text line breaks.
 - [x] Preserve exact Editor update-only and superuser create/delete permissions, plus authenticated star behavior.
 - [x] Confirm all roles, including anonymous users, can load public Blog data.
 - [x] Confirm all roles, including anonymous users, can search public Blog data.
 - [x] Run `python manage.py check` and the Django test suite; do not report checks as passed without actually running them.
 - [ ] Run the application with `python manage.py runserver` and manually verify list loading, search, modal create, toast feedback, stars, and permissions for anonymous, regular, Editor, and superuser sessions.
-- [ ] Test an XSS payload such as `<img src="x" onerror="alert('XSS!')">`; verify no executable markup or alert appears.
+- [x] Test an XSS payload such as `<img src="x" onerror="alert('XSS!')">` in server validation and mocked JavaScript DOM rendering; verify stripped input or literal text without injected markup.
+- [ ] Verify the XSS payload in a live browser; confirm no executable markup or alert appears.
 
 ## Current verification record
+
+The 2026-10-04 XSS implementation added `strip_tags` and surrounding-whitespace cleanup in `BlogPostForm.clean_title` and `clean_content`; both reject values that become empty. AJAX creation, traditional creation, and update share this validation. Category remains choice-validated and pictures remain URL-validated. The existing JavaScript renderer already uses `textContent`, text nodes, and DOM properties instead of interpolated HTML, so no renderer change was needed. `python manage.py check` completed with two existing W042 warnings, all 80 Django tests passed, and `node --check static/js/blog.js` passed. Eight new regression tests cover stripping, empty-after-cleaning rejection, line-break preservation, unsafe URL rejection, and legacy JSON values. A temporary Node VM harness passed 233 assertions across 12 card configurations and helper tests: injected title/body/category/label payloads stayed literal, intended line breaks remained, and no unexpected images, event attributes, `innerHTML` writes, or alert calls occurred. The DOM was mocked; live-browser XSS verification remains unchecked. Earlier verification records below are historical.
 
 The 2026-10-04 toast-only review confirmed that Blog creation already calls the shared `showToast` for success and failures, including field-labeled server validation messages. No application changes were needed. A temporary Node VM harness executing read-source copies of `addBlog` and `showToast` passed 12 verification groups covering `201` success/default messages, `400` multi-field validation, `403` authorization, `500` and invalid-JSON fallback, network errors, text-safe messages, toast classes, and dismissal timers. Failure scenarios retained form input. DOM, FormData, Fetch, popovers, timers, and list refresh were mocked; this does not establish live-browser rendering. Django checks/tests were not rerun for this documentation-only update; their previous results remain recorded below. Unrelated checklist items remain unchanged.
 

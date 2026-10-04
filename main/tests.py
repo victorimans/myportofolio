@@ -786,6 +786,155 @@ class AuthorizationAcceptanceTests(TestCase):
                 self.assertEqual(response.json()["errors"][field_name][0]["code"], code)
                 self.assertEqual(list(BlogPost.objects.values()), original_posts)
 
+    def test_blog_ajax_create_strips_markup_and_preserves_plain_text_and_line_breaks(self):
+        response = self.clients["owner"].post(reverse("main:create_blog_ajax"), {
+            **self.blog_data,
+            "title": '  <b>Halo</b> <img src="x" onerror="alert(1)">dunia  ',
+            "content": '  <strong>First line</strong>\nSecond line\n\n<img src="x" onerror="alert(1)">Last line  ',
+        })
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response["Content-Type"], "application/json")
+        blog_post = BlogPost.objects.get(pk=response.json()["pk"])
+        self.assertEqual(BlogPost.objects.count(), 2)
+        self.assertEqual(blog_post.title, "Halo dunia")
+        self.assertEqual(blog_post.content, "First line\nSecond line\n\nLast line")
+        listing = self.clients["anonymous"].get(reverse("main:get_blog_json"))
+        self.assertEqual(listing.status_code, 200)
+        record = next(item for item in listing.json() if item["pk"] == blog_post.pk)
+        self.assertEqual(record["fields"]["title"], "Halo dunia")
+        self.assertEqual(record["fields"]["content"], "First line\nSecond line\n\nLast line")
+
+    def test_blog_ajax_create_rejects_tag_only_title_and_content_without_saving(self):
+        original_posts = list(BlogPost.objects.values())
+        for field_name, message in (
+            ("title", "Judul blog tidak boleh hanya berisi tag HTML."),
+            ("content", "Isi blog tidak boleh hanya berisi tag HTML."),
+        ):
+            for value in ('<img src="x" onerror="alert(1)">', "<b> \n </b>"):
+                with self.subTest(field_name=field_name, value=value):
+                    response = self.clients["owner"].post(reverse("main:create_blog_ajax"), {
+                        **self.blog_data,
+                        field_name: value,
+                    })
+
+                    self.assertEqual(response.status_code, 400)
+                    self.assertEqual(response["Content-Type"], "application/json")
+                    self.assertEqual(set(response.json()["errors"]), {field_name})
+                    self.assertEqual(response.json()["errors"][field_name][0]["message"], message)
+                    self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_traditional_create_strips_markup_and_preserves_line_breaks(self):
+        response = self.clients["owner"].post(reverse("main:create_blog"), {
+            **self.blog_data,
+            "title": '  <b>Halo</b> <img src="x" onerror="alert(1)">dunia  ',
+            "content": '  <em>First line</em>\nSecond line\n\n<img src="x" onerror="alert(1)">Last line  ',
+        })
+
+        self.assertRedirects(response, reverse("main:show_blog"))
+        self.assertEqual(BlogPost.objects.count(), 2)
+        blog_post = BlogPost.objects.exclude(pk=self.post.pk).get()
+        self.assertEqual(blog_post.title, "Halo dunia")
+        self.assertEqual(blog_post.content, "First line\nSecond line\n\nLast line")
+
+    def test_blog_traditional_create_rejects_tag_only_title_and_content_without_saving(self):
+        original_posts = list(BlogPost.objects.values())
+        for field_name, message in (
+            ("title", "Judul blog tidak boleh hanya berisi tag HTML."),
+            ("content", "Isi blog tidak boleh hanya berisi tag HTML."),
+        ):
+            for value in ('<img src="x" onerror="alert(1)">', "<b> \n </b>"):
+                with self.subTest(field_name=field_name, value=value):
+                    response = self.clients["owner"].post(reverse("main:create_blog"), {
+                        **self.blog_data,
+                        field_name: value,
+                    })
+
+                    self.assertEqual(response.status_code, 200)
+                    self.assertTemplateUsed(response, "blog_form.html")
+                    self.assertFormError(response.context["form"], field_name, message)
+                    self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_update_strips_markup_and_preserves_line_breaks(self):
+        created_at = self.post.created_at
+        response = self.clients["editor"].post(reverse("main:update_blog", args=[self.post.pk]), {
+            **self.blog_data,
+            "title": '  <b>Halo</b> <img src="x" onerror="alert(1)">dunia  ',
+            "content": '  <em>First line</em>\nSecond line\n\n<img src="x" onerror="alert(1)">Last line  ',
+        })
+
+        self.assertRedirects(response, reverse("main:show_blog"))
+        self.post.refresh_from_db()
+        self.assertEqual(BlogPost.objects.count(), 1)
+        self.assertEqual(self.post.created_at, created_at)
+        self.assertEqual(self.post.title, "Halo dunia")
+        self.assertEqual(self.post.content, "First line\nSecond line\n\nLast line")
+
+    def test_blog_update_rejects_tag_only_title_and_content_without_saving(self):
+        original_posts = list(BlogPost.objects.values())
+        for field_name, message in (
+            ("title", "Judul blog tidak boleh hanya berisi tag HTML."),
+            ("content", "Isi blog tidak boleh hanya berisi tag HTML."),
+        ):
+            for value in ('<img src="x" onerror="alert(1)">', "<b> \n </b>"):
+                with self.subTest(field_name=field_name, value=value):
+                    response = self.clients["editor"].post(
+                        reverse("main:update_blog", args=[self.post.pk]),
+                        {**self.blog_data, field_name: value},
+                    )
+
+                    self.assertEqual(response.status_code, 200)
+                    self.assertTemplateUsed(response, "blog_form.html")
+                    self.assertFormError(response.context["form"], field_name, message)
+                    self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_writes_reject_javascript_picture_url_without_saving(self):
+        original_posts = list(BlogPost.objects.values())
+        routes = (
+            ("owner", reverse("main:create_blog_ajax"), 400),
+            ("owner", reverse("main:create_blog"), 200),
+            ("editor", reverse("main:update_blog", args=[self.post.pk]), 200),
+        )
+        for role, url, status_code in routes:
+            with self.subTest(url=url):
+                response = self.clients[role].post(url, {
+                    **self.blog_data,
+                    "picture_link": "javascript:alert(1)",
+                })
+
+                self.assertEqual(response.status_code, status_code)
+                if status_code == 400:
+                    self.assertEqual(response["Content-Type"], "application/json")
+                    self.assertEqual(set(response.json()["errors"]), {"picture_link"})
+                    self.assertEqual(response.json()["errors"]["picture_link"][0]["code"], "invalid")
+                else:
+                    self.assertTemplateUsed(response, "blog_form.html")
+                    self.assertEqual(set(response.context["form"].errors), {"picture_link"})
+                    self.assertEqual(response.context["form"].errors.as_data()["picture_link"][0].code, "invalid")
+                self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_existing_blog_markup_remains_plain_json_data_without_mutation(self):
+        legacy = BlogPost.objects.create(
+            title='<img src="x" onerror="alert(1)">Legacy <b>title</b>',
+            content='First line\n\n<script>alert(1)</script><img src="x" onerror="alert(1)">',
+        )
+        original_posts = list(BlogPost.objects.values())
+        for url in (
+            reverse("main:get_blog_json"),
+            reverse("main:show_blog_json_by_id", args=[legacy.pk]),
+        ):
+            with self.subTest(url=url):
+                response = self.clients["anonymous"].get(url)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response["Content-Type"], "application/json")
+                record = next(item for item in response.json() if item["pk"] == legacy.pk)
+                self.assertIsInstance(record["fields"]["title"], str)
+                self.assertIsInstance(record["fields"]["content"], str)
+                self.assertEqual(record["fields"]["title"], legacy.title)
+                self.assertEqual(record["fields"]["content"], legacy.content)
+                self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
     def test_blog_ajax_create_rejects_non_superusers_with_json(self):
         original_posts = list(BlogPost.objects.values())
         for role in ("anonymous", "member", "editor"):

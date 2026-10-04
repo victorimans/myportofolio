@@ -100,3 +100,15 @@ class BlogPostForm(ModelForm):
                 }
             ),
         }
+
+    def clean_title(self):
+        title = strip_tags(self.cleaned_data["title"]).strip()
+        if not title:
+            raise ValidationError("Judul blog tidak boleh hanya berisi tag HTML.")
+        return title
+
+    def clean_content(self):
+        content = strip_tags(self.cleaned_data["content"]).strip()
+        if not content:
+            raise ValidationError("Isi blog tidak boleh hanya berisi tag HTML.")
+        return content
