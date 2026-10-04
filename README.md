@@ -200,4 +200,17 @@ Ekspor sesi OpenCode disertakan di repository:
 
 - [Sesi implementasi Blog Tugas 5](<docs/AI Disclosure/Tugas 5/session-ses_ef8e.md>)
 
+# Tugas 5
+## Pertanyaan :
+1. Jelaskan apa itu debouncing dan mengapa teknik ini penting diterapkan pada fitur pencarian yang menggunakan AJAX!
 
+2. Jelaskan fungsi dari penggunaan await ketika kita menggunakan fetch()! Apa yang akan terjadi jika kita tidak menggunakan await?
+
+3. Jelaskan apa itu serangan XSS (Cross-Site Scripting) dan mengapa data yang ditampilkan melalui AJAX/JavaScript lebih rentan terhadap serangan ini daripada data yang ditampilkan langsung melalui template Django!
+
+## Jawaban :
+1. Debouncing menunda pemanggilan fungsi sampai pengguna berhenti mengetik selama jeda tertentu, misalnya 300 ms. Pada pencarian AJAX, teknik ini mengurangi request yang tidak perlu saat pengguna masih mengetik sehingga penggunaan server lebih efisien dan hasil pencarian tidak terus diperbarui untuk setiap karakter.
+
+2. `await` menunggu Promise dari `fetch()` selesai sebelum kode melanjutkan ke langkah berikutnya, misalnya membaca JSON dari response. Tanpa `await`, `fetch()` langsung menghasilkan Promise sehingga kode berikutnya dapat berjalan sebelum response tersedia; penanganannya perlu menggunakan `.then()` atau mekanisme async lain.
+
+3. XSS (Cross-Site Scripting) adalah serangan ketika input berisi skrip atau markup berbahaya ditampilkan dan dijalankan di browser pengguna. Data AJAX/JavaScript lebih rentan jika dimasukkan ke halaman sebagai HTML, misalnya melalui `innerHTML`, karena browser dapat menafsirkan markup tersebut. Template Django secara default melakukan autoescape pada nilai yang ditampilkan, sehingga karakter HTML berbahaya ditampilkan sebagai teks. Saat merender data AJAX, gunakan `textContent` atau DOM API yang aman dan jangan menganggap data dari server selalu tepercaya.
