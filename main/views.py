@@ -304,14 +304,32 @@ def delete_blog(request, id):
 
 @require_GET
 def get_blog_json(request):
-    blog_posts = BlogPost.objects.order_by("-created_at", "-id")
-    blog_posts_json = serializers.serialize(
-        "json",
-        blog_posts,
-        fields=["title", "content", "category", "picture_link", "created_at"],
-        use_natural_foreign_keys=True,
-    )
-    return HttpResponse(blog_posts_json, content_type="application/json")
+    blog_posts = BlogPost.objects.annotate(
+        star_count=Count("starred_by", distinct=True)
+    ).order_by("-created_at", "-id")
+    if request.user.is_authenticated:
+        membership = BlogPost.starred_by.through.objects.filter(
+            blogpost_id=OuterRef("pk"), user_id=request.user.pk
+        )
+        blog_posts = blog_posts.annotate(is_starred=Exists(membership))
+
+    data = [
+        {
+            "pk": blog_post.pk,
+            "fields": {
+                "title": blog_post.title,
+                "content": blog_post.content,
+                "category": blog_post.category,
+                "category_display": blog_post.get_category_display(),
+                "picture_link": blog_post.picture_link,
+                "created_at": blog_post.created_at.isoformat(),
+                "star_count": blog_post.star_count,
+                "is_starred": getattr(blog_post, "is_starred", False),
+            },
+        }
+        for blog_post in blog_posts
+    ]
+    return JsonResponse(data, safe=False)
 
 
 @require_GET
@@ -327,24 +345,8 @@ def show_blog_json_by_id(request, id):
 
 @require_GET
 def show_blog(request):
-    json_response = get_blog_json(request)
-    deserialized_posts = serializers.deserialize(
-        "json",
-        json_response.content.decode("utf-8"),
-    )
-    blog_post_ids = [item.object.pk for item in deserialized_posts]
-    blog_posts = BlogPost.objects.filter(pk__in=blog_post_ids).annotate(
-        star_count=Count("starred_by", distinct=True)
-    ).order_by("-created_at", "-id")
-    if request.user.is_authenticated:
-        membership = BlogPost.starred_by.through.objects.filter(
-            blogpost_id=OuterRef("pk"), user_id=request.user.pk
-        )
-        blog_posts = blog_posts.annotate(is_starred=Exists(membership))
-
     context = {
         "name": "Victoriano Iman Santosa",
-        "blog_posts": blog_posts,
         "can_edit": can_edit(request.user),
     }
     return render(request, "blog.html", context)

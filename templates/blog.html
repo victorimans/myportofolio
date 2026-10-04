@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Blog - {{ name|default:"Victoriano Iman Santosa" }}{% endblock %}
 
@@ -13,54 +14,30 @@
                     </p>
                 {% endif %}
 
-                <div class="blog-list">
-                    {% for blog_post in blog_posts %}
-                        <article class="blog-post">
-                            {% if blog_post.picture_link %}
-                                <img class="blog-post-image" src="{{ blog_post.picture_link }}" alt="Gambar {{ blog_post.title }}">
-                            {% endif %}
-                            <div class="blog-post-header">
-                                <div>
-                                    <p class="blog-post-date">{{ blog_post.created_at|date:"j F Y" }}</p>
-                                    <p class="blog-post-category">{{ blog_post.get_category_display }}</p>
-                                </div>
-                                <div class="blog-post-actions">
-                                    {% if can_edit %}
-                                        <a href="{% url 'main:update_blog' blog_post.id %}" class="button button-small" aria-label="Edit blog: {{ blog_post.title }}">Edit Blog</a>
-                                    {% endif %}
-                                    {% if user.is_superuser %}
-                                        <form method="post" action="{% url 'main:delete_blog' blog_post.id %}">
-                                            {% csrf_token %}
-                                            <button type="submit" class="button button-secondary button-small" aria-label="Delete blog: {{ blog_post.title }}">Hapus Blog</button>
-                                        </form>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <h2>{{ blog_post.title }}</h2>
-                            <div class="blog-post-content">{{ blog_post.content|linebreaks }}</div>
-                            <div class="blog-post-star">
-                                {% if user.is_authenticated %}
-                                    <form method="post" action="{% url 'main:toggle_blog_star' blog_post.id %}" class="star-form">
-                                        {% csrf_token %}
-                                        <button type="submit"
-                                                class="button button-star{% if blog_post.is_starred %} is-starred{% endif %}"
-                                                title="{% if blog_post.star_count %}{{ blog_post.star_count }} star{{ blog_post.star_count|pluralize }}{% else %}Jadilah yang pertama memberi star{% endif %}"
-                                                aria-label="{% if blog_post.is_starred %}Unstar{% else %}Star{% endif %} {{ blog_post.title }}">
-                                            <span class="star-icon" aria-hidden="true">★</span>
-                                            <span>{% if blog_post.is_starred %}Unstar{% else %}Star{% endif %}</span>
-                                            <span class="star-count">{{ blog_post.star_count }} star{{ blog_post.star_count|pluralize }}</span>
-                                        </button>
-                                    </form>
-                                {% else %}
-                                    <span class="star-count project-star-total">{{ blog_post.star_count }} star{{ blog_post.star_count|pluralize }}</span>
-                                    <a href="{% url 'main:login' %}?next={% url 'main:show_blog' %}">Login to star</a>
-                                {% endif %}
-                            </div>
-                        </article>
-                    {% empty %}
-                        <p class="empty-state">No blog posts have been added yet.</p>
-                    {% endfor %}
+                <div id="blog-loading" role="status">Memuat blog...</div>
+                <div id="blog-error" class="hide" role="alert">
+                    <p>Gagal memuat blog. Silakan coba lagi.</p>
+                    <button id="blog-retry" type="button" class="button button-secondary">Coba lagi</button>
+                </div>
+                <p id="blog-empty" class="empty-state hide" role="status">No blog posts have been added yet.</p>
+                <div id="blog-list" class="blog-list hide" aria-live="polite" aria-busy="true"></div>
+                <noscript><p>Aktifkan JavaScript untuk menampilkan blog.</p></noscript>
+
+                {{ can_edit|json_script:"blog-can-edit" }}
+                {{ user.is_superuser|json_script:"blog-is-superuser" }}
+                {{ user.is_authenticated|json_script:"blog-is-authenticated" }}
+                <div id="blog-endpoints" hidden
+                     data-json-url="{% url 'main:get_blog_json' %}"
+                     data-update-template="{% url 'main:update_blog' 0 %}"
+                     data-delete-template="{% url 'main:delete_blog' 0 %}"
+                     data-star-template="{% url 'main:toggle_blog_star' 0 %}"
+                     data-login-url="{% url 'main:login' %}">
+                    {% csrf_token %}
                 </div>
             </div>
         </section>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/blog.js' %}" defer></script>
 {% endblock %}

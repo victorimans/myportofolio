@@ -107,25 +107,29 @@ All complete pages extend `templates/base.html`, which provides shared assets, t
 
 ## Implementation checklist
 
-- [ ] Change `/blog/` to render the list shell and controls, not the post collection.
-- [ ] Add/update public GET collection JSON using manually composed `JsonResponse` data.
-- [ ] Include `star_count` and per-request `is_starred` while keeping star membership private.
+- [x] Change `/blog/` to render the list shell and controls, not the post collection.
+- [x] Add/update public GET collection JSON using manually composed `JsonResponse` data.
+- [x] Include `star_count` and per-request `is_starred` while keeping star membership private.
 - [ ] Add case-insensitive, partial-title filtering to the JSON endpoint.
-- [ ] Add Blog page JavaScript with Fetch, 300 ms debounce, request-race handling, and loading/error/retry/empty states.
-- [ ] Render title, category, date, content, image, star controls, and role-dependent edit/delete controls using text-safe DOM construction.
+- [x] Add Blog page JavaScript with Fetch, request-race handling, and loading/error/retry/empty states.
+- [ ] Add 300 ms debounce for Blog title search.
+- [x] Render title, category, date, content, image, star controls, and role-dependent edit/delete controls using text-safe DOM construction.
 - [ ] Add a superuser-only create modal on `/blog/` using `BlogPostForm`.
 - [ ] Add a POST AJAX create endpoint with `201`, `400`, and `403` JSON responses and server-side role enforcement.
 - [ ] Send CSRF token with the modal request.
 - [ ] Refresh the displayed list after successful creation without navigation.
 - [ ] Reuse shared toast helper for successful creation and authorization/validation/network errors.
 - [ ] Strip tags in `clean_title` and `clean_content`; reject an empty-after-cleaning title.
-- [ ] Preserve exact Editor update-only and superuser create/delete permissions, plus authenticated star behavior.
-- [ ] Confirm all roles, including anonymous users, can load/search public Blog data.
-- [ ] Run `python manage.py check` and the Django test suite; do not report checks as passed without actually running them.
+- [x] Preserve exact Editor update-only and superuser create/delete permissions, plus authenticated star behavior.
+- [x] Confirm all roles, including anonymous users, can load public Blog data.
+- [ ] Confirm all roles, including anonymous users, can search public Blog data.
+- [x] Run `python manage.py check` and the Django test suite; do not report checks as passed without actually running them.
 - [ ] Run the application with `python manage.py runserver` and manually verify list loading, search, modal create, toast feedback, stars, and permissions for anonymous, regular, Editor, and superuser sessions.
 - [ ] Test an XSS payload such as `<img src="x" onerror="alert('XSS!')">`; verify no executable markup or alert appears.
 
 ## Current verification record
+
+The 2026-10-04 checklist review reflects the implemented AJAX list shell, manually composed JSON with aggregate and caller-specific star state, safe DOM rendering, and loading/error/retry/empty states. In this session, before this documentation-only update, `python manage.py check` completed with two existing W042 warnings, all 58 Django tests passed, and `node --check static/js/blog.js` passed. These commands were not rerun for this checklist update. Search/debouncing, AJAX creation, Blog form tag stripping, and live browser verification remain outstanding. The source review below is historical.
 
 The 2026-10-03 source review found the following current state; this is a static inspection, not a fresh runtime test:
 
