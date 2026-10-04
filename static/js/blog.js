@@ -1,7 +1,10 @@
 (() => {
   const endpoints = document.getElementById("blog-endpoints");
   const list = document.getElementById("blog-list");
-  if (!endpoints || !list) return;
+  const searchForm = document.getElementById("blog-search-form");
+  const searchInput = document.getElementById("blog-search-input");
+  const SEARCH_DEBOUNCE_DELAY = 300;
+  if (!endpoints || !list || !searchForm || !searchInput) return;
 
   const loadingState = document.getElementById("blog-loading");
   const errorState = document.getElementById("blog-error");
@@ -12,6 +15,7 @@
   const csrfToken = endpoints.querySelector('[name="csrfmiddlewaretoken"]').value;
   const data = endpoints.dataset;
   let activeController;
+  let searchDebounceTimer;
 
   function setState(state) {
     loadingState.classList.toggle("hide", state !== "loading");
@@ -108,13 +112,16 @@
     return article;
   }
 
-  async function fetchBlog() {
+  async function fetchBlog(query = "") {
     activeController?.abort();
     const controller = new AbortController();
     activeController = controller;
     setState("loading");
+    const url = new URL(data.jsonUrl, window.location.origin);
+    if (query) url.searchParams.set("title", query);
+    emptyState.textContent = query ? "Tidak ada blog yang cocok dengan pencarian." : "No blog posts have been added yet.";
     try {
-      const response = await fetch(data.jsonUrl, {
+      const response = await fetch(url, {
         headers: { Accept: "application/json" },
         signal: controller.signal,
       });
@@ -132,6 +139,28 @@
     }
   }
 
-  document.getElementById("blog-retry").addEventListener("click", fetchBlog);
-  fetchBlog();
+  function searchBlog() {
+    const query = searchInput.value.trim();
+    const url = new URL(window.location.href);
+    if (query) url.searchParams.set("title", query);
+    else url.searchParams.delete("title");
+    window.history.replaceState({}, "", url);
+    fetchBlog(query);
+  }
+
+  searchInput.addEventListener("input", () => {
+    window.clearTimeout(searchDebounceTimer);
+    activeController?.abort();
+    searchDebounceTimer = window.setTimeout(searchBlog, SEARCH_DEBOUNCE_DELAY);
+  });
+  searchForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    window.clearTimeout(searchDebounceTimer);
+    searchBlog();
+  });
+  document.getElementById("blog-retry").addEventListener("click", () => {
+    window.clearTimeout(searchDebounceTimer);
+    searchBlog();
+  });
+  fetchBlog(searchInput.value.trim());
 })();

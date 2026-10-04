@@ -358,6 +358,55 @@ class MainTest(TestCase):
             newer_post.created_at,
         )
 
+    def test_blog_json_search_matches_partial_case_insensitive_titles_not_content(self):
+        matching_post = BlogPost.objects.create(
+            title="Learning Django with AJAX",
+            content="A title search result.",
+        )
+        BlogPost.objects.create(
+            title="Unrelated writing",
+            content="Learning Django with AJAX appears only in the body.",
+        )
+
+        for title_query in ("django", "DJANGO", "arning dJanGo with"):
+            with self.subTest(title_query=title_query):
+                response = self.client.get(reverse("main:get_blog_json"), {"title": title_query})
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual([item["pk"] for item in response.json()], [matching_post.pk])
+                self.assertEqual(response.json()[0]["fields"]["title"], matching_post.title)
+
+    def test_blog_json_search_trims_surrounding_whitespace(self):
+        matching_post = BlogPost.objects.create(title="Django notes", content="Matching content")
+        BlogPost.objects.create(title="Other notes", content="Unrelated content")
+
+        response = self.client.get(reverse("main:get_blog_json"), {"title": " \tDjango\n "})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["pk"] for item in response.json()], [matching_post.pk])
+
+    def test_blog_json_missing_empty_and_whitespace_search_return_all_posts(self):
+        older_post = BlogPost.objects.create(title="Older writing", content="Older content")
+        newer_post = BlogPost.objects.create(title="Newer writing", content="Newer content")
+        BlogPost.objects.filter(pk__in=[older_post.pk, newer_post.pk]).update(created_at=timezone.now())
+
+        for params in ({}, {"title": ""}, {"title": " \t\n "}):
+            with self.subTest(params=params):
+                response = self.client.get(reverse("main:get_blog_json"), params)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual([item["pk"] for item in response.json()], [newer_post.pk, older_post.pk])
+
+    def test_blog_json_search_without_matches_returns_empty_list(self):
+        BlogPost.objects.create(title="Existing writing", content="Existing content")
+
+        response = self.client.get(reverse("main:get_blog_json"), {"title": "not-found"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response, JsonResponse)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json(), [])
+
     def test_blogpost_database_schema_contains_model_fields(self):
         column_names = {
             column.name
@@ -575,6 +624,71 @@ class AuthorizationAcceptanceTests(TestCase):
         self.assertEqual(self.clients["anonymous"].get(
             reverse("main:show_blog_json_by_id", args=[self.post.pk + 1000])
         ).status_code, 404)
+
+    def test_blog_title_search_preserves_order_star_state_and_privacy_for_every_role(self):
+        self.post.starred_by.add(self.member, self.editor)
+        tied_post = BlogPost.objects.create(title="Another PUBLIC blog", content="Another result")
+        newest_post = BlogPost.objects.create(title="Newest public blog", content="Newest result")
+        BlogPost.objects.create(title="Unrelated title", content="Public appears only in the body")
+        timestamp = timezone.now()
+        BlogPost.objects.filter(pk__in=[self.post.pk, tied_post.pk]).update(created_at=timestamp)
+        BlogPost.objects.filter(pk=newest_post.pk).update(created_at=timestamp + timedelta(days=1))
+
+        for role, client in self.clients.items():
+            with self.subTest(role=role):
+                response = client.get(reverse("main:get_blog_json"), {"title": "  pUbLiC  "})
+                data = response.json()
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response["Content-Type"], "application/json")
+                self.assertEqual([item["pk"] for item in data], [newest_post.pk, tied_post.pk, self.post.pk])
+                for item in data:
+                    self.assertIs(type(item["pk"]), int)
+                    self.assertEqual(set(item), {"pk", "fields"})
+                    self.assertEqual(set(item["fields"]), {
+                        "title", "content", "category", "picture_link", "created_at",
+                        "category_display", "star_count", "is_starred",
+                    })
+                    self.assertEqual(item["fields"]["star_count"], 2 if item["pk"] == self.post.pk else 0)
+                    self.assertIs(
+                        item["fields"]["is_starred"],
+                        item["pk"] == self.post.pk and role in ("member", "editor"),
+                    )
+                for user in (self.member, self.editor, self.owner):
+                    self.assertNotIn(user.username, response.content.decode())
+                    if user.email:
+                        self.assertNotIn(user.email, response.content.decode())
+
+    def test_blog_search_shell_preserves_escaped_query_and_controls_for_every_role(self):
+        title_query = '\"><script>alert(1)</script>&'
+        escaped_query = '&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;&amp;'
+
+        for role, client in self.clients.items():
+            with self.subTest(role=role):
+                with patch("main.views.get_blog_json") as get_blog_json:
+                    with CaptureQueriesContext(connection) as queries:
+                        response = client.get(reverse("main:show_blog"), {"title": f"  {title_query}  "})
+
+                get_blog_json.assert_not_called()
+                self.assertEqual(response.status_code, 200)
+                self.assertTemplateUsed(response, "blog.html")
+                self.assertEqual(response.context["title_query"], title_query)
+                self.assertContains(response, f'value="{escaped_query}"')
+                self.assertNotContains(response, title_query)
+                self.assertContains(response, 'id="blog-search-form"')
+                self.assertContains(response, 'id="blog-search-input"')
+                self.assertContains(response, 'name="title"')
+                self.assertContains(response, 'type="search"')
+                self.assertContains(response, 'id="blog-list"')
+                self.assertContains(response, f'data-json-url="{reverse("main:get_blog_json")}"')
+                self.assertContains(response, 'src="/static/js/blog.js"')
+                self.assertNotIn("blog_posts", response.context)
+                self.assertNotContains(response, self.post.title)
+                self.assertNotContains(response, self.post.content)
+                self.assertFalse(any(
+                    BlogPost._meta.db_table.lower() in query["sql"].lower()
+                    for query in queries.captured_queries
+                ))
 
     def test_project_detail_html_is_public(self):
         url = reverse("main:show_project_detail", args=[self.project.pk])

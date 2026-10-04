@@ -304,6 +304,7 @@ def delete_blog(request, id):
 
 @require_GET
 def get_blog_json(request):
+    title_query = request.GET.get("title", "").strip()
     blog_posts = BlogPost.objects.annotate(
         star_count=Count("starred_by", distinct=True)
     ).order_by("-created_at", "-id")
@@ -312,6 +313,8 @@ def get_blog_json(request):
             blogpost_id=OuterRef("pk"), user_id=request.user.pk
         )
         blog_posts = blog_posts.annotate(is_starred=Exists(membership))
+    if title_query:
+        blog_posts = blog_posts.filter(title__icontains=title_query)
 
     data = [
         {
@@ -347,6 +350,7 @@ def show_blog_json_by_id(request, id):
 def show_blog(request):
     context = {
         "name": "Victoriano Iman Santosa",
+        "title_query": request.GET.get("title", "").strip(),
         "can_edit": can_edit(request.user),
     }
     return render(request, "blog.html", context)

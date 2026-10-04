@@ -14,6 +14,15 @@
                     </p>
                 {% endif %}
 
+                <form id="blog-search-form" class="project-search-form" role="search">
+                    <label for="blog-search-input">Cari blog berdasarkan judul</label>
+                    <div class="project-search-controls">
+                        <input id="blog-search-input" name="title" type="search"
+                               value="{{ title_query }}" placeholder="Masukkan judul blog">
+                        <button type="submit" class="button">Cari</button>
+                    </div>
+                </form>
+
                 <div id="blog-loading" role="status">Memuat blog...</div>
                 <div id="blog-error" class="hide" role="alert">
                     <p>Gagal memuat blog. Silakan coba lagi.</p>
