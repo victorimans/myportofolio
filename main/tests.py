@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from datetime import timedelta
 from urllib.parse import parse_qs, urlsplit
@@ -14,6 +15,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
+from main.forms import BlogPostForm
 from main.models import BlogPost, Experience, Project
 
 
@@ -697,6 +699,193 @@ class AuthorizationAcceptanceTests(TestCase):
                 response = client.get(url)
                 self.assertContains(response, self.project.title)
                 self.assertNotContains(response, 'popovertarget="add-project-modal"')
+
+    def test_add_blog_modal_is_available_only_to_superuser(self):
+        create_url = reverse("main:create_blog_ajax")
+        self.assertEqual(create_url, "/blog/add-ajax/")
+        for role, client in self.clients.items():
+            with self.subTest(role=role):
+                response = client.get(reverse("main:show_blog"))
+                self.assertEqual(response.status_code, 200)
+                if role == "owner":
+                    self.assertContains(response, 'popovertarget="add-blog-modal"')
+                    self.assertContains(response, 'id="add-blog-modal"')
+                    self.assertContains(response, 'id="blog-form"')
+                    form_match = re.search(
+                        r'<form\b(?=[^>]*\bid="blog-form")[^>]*>.*?</form>',
+                        response.content.decode(),
+                        re.DOTALL,
+                    )
+                    self.assertIsNotNone(form_match)
+                    form_html = form_match.group()
+                    self.assertIn(f'action="{create_url}"', form_html)
+                    self.assertRegex(form_html, r'method="(?i:post)"')
+                    self.assertIn('name="csrfmiddlewaretoken"', form_html)
+                    for field_name in BlogPostForm().fields:
+                        self.assertIn(f'name="{field_name}"', form_html)
+                    for field_name in ("id", "pk", "created_at", "starred_by"):
+                        self.assertNotIn(f'name="{field_name}"', form_html)
+                else:
+                    self.assertNotContains(response, 'id="add-blog-modal"')
+                    self.assertNotContains(response, 'popovertarget="add-blog-modal"')
+                    self.assertNotContains(response, 'id="blog-form"')
+                    self.assertNotContains(response, "Tambah Blog")
+
+    def test_blog_ajax_create_persists_post_and_exposes_it_in_public_search(self):
+        response = self.clients["owner"].post(reverse("main:create_blog_ajax"), self.blog_data)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertIsInstance(response, JsonResponse)
+        self.assertEqual(response["Content-Type"], "application/json")
+        payload = response.json()
+        self.assertIs(type(payload["pk"]), int)
+        blog_post = BlogPost.objects.get(pk=payload["pk"])
+        self.assertEqual(payload, {
+            "message": "Blog berhasil ditambahkan.",
+            "pk": blog_post.pk,
+        })
+        self.assertEqual(BlogPost.objects.count(), 2)
+        for field_name, value in self.blog_data.items():
+            self.assertEqual(getattr(blog_post, field_name), value)
+        for params in ({}, {"title": "  CHANGED  "}):
+            with self.subTest(params=params):
+                listing = self.clients["anonymous"].get(reverse("main:get_blog_json"), params)
+                self.assertEqual(listing.status_code, 200)
+                records = listing.json()
+                record = next(item for item in records if item["pk"] == blog_post.pk)
+                for field_name, value in self.blog_data.items():
+                    self.assertEqual(record["fields"][field_name], value)
+                if params:
+                    self.assertEqual([item["pk"] for item in records], [blog_post.pk])
+
+    def test_blog_ajax_create_returns_form_errors_without_mutation(self):
+        original_posts = list(BlogPost.objects.values())
+        cases = (
+            ("title", None, "required"),
+            ("content", None, "required"),
+            ("title", "", "required"),
+            ("content", "", "required"),
+            ("category", "not-a-category", "invalid_choice"),
+            ("picture_link", "not-a-url", "invalid"),
+        )
+        for field_name, value, code in cases:
+            with self.subTest(field_name=field_name, value=value):
+                data = self.blog_data.copy()
+                if value is None:
+                    data.pop(field_name)
+                else:
+                    data[field_name] = value
+                form = BlogPostForm(data)
+                self.assertFalse(form.is_valid())
+                response = self.clients["owner"].post(reverse("main:create_blog_ajax"), data)
+
+                self.assertEqual(response.status_code, 400)
+                self.assertIsInstance(response, JsonResponse)
+                self.assertEqual(response["Content-Type"], "application/json")
+                self.assertEqual(response.json(), {"errors": form.errors.get_json_data()})
+                self.assertEqual(response.json()["errors"][field_name][0]["code"], code)
+                self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_ajax_create_rejects_non_superusers_with_json(self):
+        original_posts = list(BlogPost.objects.values())
+        for role in ("anonymous", "member", "editor"):
+            with self.subTest(role=role):
+                response = self.clients[role].post(reverse("main:create_blog_ajax"), self.blog_data)
+
+                self.assertEqual(response.status_code, 403)
+                self.assertIsInstance(response, JsonResponse)
+                self.assertEqual(response["Content-Type"], "application/json")
+                self.assertIn("message", response.json())
+                self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_ajax_create_rechecks_revoked_superuser_permission(self):
+        self.assertContains(
+            self.clients["owner"].get(reverse("main:show_blog")),
+            'id="add-blog-modal"',
+        )
+        self.owner.groups.add(self.editor_group)
+        get_user_model().objects.filter(pk=self.owner.pk).update(is_superuser=False)
+        original_posts = list(BlogPost.objects.values())
+
+        response = self.clients["owner"].post(reverse("main:create_blog_ajax"), self.blog_data)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIsInstance(response, JsonResponse)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertIn("message", response.json())
+        self.assertEqual(list(BlogPost.objects.values()), original_posts)
+        page = self.clients["owner"].get(reverse("main:show_blog"))
+        self.assertNotContains(page, 'id="add-blog-modal"')
+        self.assertNotContains(page, 'popovertarget="add-blog-modal"')
+
+    def test_blog_ajax_create_is_post_only(self):
+        url = reverse("main:create_blog_ajax")
+        original_posts = list(BlogPost.objects.values())
+        for role, client in self.clients.items():
+            for method in ("get", "head", "put", "patch", "delete", "options"):
+                with self.subTest(role=role, method=method):
+                    response = getattr(client, method)(url)
+                    self.assertEqual(response.status_code, 405)
+                    self.assertEqual(response["Allow"], "POST")
+                    self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_ajax_create_requires_csrf_and_accepts_modal_form_token(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.owner)
+        url = reverse("main:create_blog_ajax")
+        original_posts = list(BlogPost.objects.values())
+        self.assertEqual(client.post(url, self.blog_data).status_code, 403)
+        self.assertEqual(list(BlogPost.objects.values()), original_posts)
+        page = client.get(reverse("main:show_blog"))
+        self.assertEqual(page.status_code, 200)
+        form_match = re.search(
+            r'<form\b(?=[^>]*\bid="blog-form")[^>]*>.*?</form>',
+            page.content.decode(),
+            re.DOTALL,
+        )
+        self.assertIsNotNone(form_match)
+        token_match = re.search(
+            r'<input\b(?=[^>]*\bname="csrfmiddlewaretoken")[^>]*\bvalue="([^"]+)"',
+            form_match.group(),
+        )
+        self.assertIsNotNone(token_match)
+        self.assertEqual(client.post(url, self.blog_data).status_code, 403)
+        self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+        response = client.post(url, {
+            **self.blog_data,
+            "csrfmiddlewaretoken": token_match.group(1),
+        })
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(BlogPost.objects.filter(pk=response.json()["pk"], **self.blog_data).exists())
+        self.assertEqual(BlogPost.objects.count(), 2)
+
+    def test_blog_ajax_create_ignores_server_managed_fields(self):
+        self.post.starred_by.add(self.member)
+        original_post = BlogPost.objects.values().get(pk=self.post.pk)
+        before_create = timezone.now()
+        response = self.clients["owner"].post(reverse("main:create_blog_ajax"), {
+            **self.blog_data,
+            "id": self.post.pk,
+            "pk": 99999,
+            "created_at": "2000-01-01T00:00:00Z",
+            "starred_by": [self.member.pk, self.editor.pk],
+        })
+        after_create = timezone.now()
+
+        self.assertEqual(response.status_code, 201)
+        blog_post = BlogPost.objects.get(pk=response.json()["pk"])
+        self.assertIs(type(blog_post.pk), int)
+        self.assertNotIn(blog_post.pk, (self.post.pk, 99999))
+        self.assertGreaterEqual(blog_post.created_at, before_create)
+        self.assertLessEqual(blog_post.created_at, after_create)
+        self.assertFalse(blog_post.starred_by.exists())
+        for field_name, value in self.blog_data.items():
+            self.assertEqual(getattr(blog_post, field_name), value)
+        self.assertEqual(BlogPost.objects.count(), 2)
+        self.assertEqual(BlogPost.objects.values().get(pk=self.post.pk), original_post)
+        self.assertEqual(list(self.post.starred_by.all()), [self.member])
 
     def test_add_project_modal_is_available_only_to_superuser(self):
         create_url = reverse("main:create_project_ajax")

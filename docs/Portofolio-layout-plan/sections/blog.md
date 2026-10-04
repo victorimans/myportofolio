@@ -1,6 +1,6 @@
 # Blog: Assignment 5 Interactivity Specification
 
-Status: AJAX listing and case-insensitive partial-title search with 300 ms debounce are implemented. AJAX creation and server-side Blog form tag stripping remain outstanding. Source and this status were reconciled on 2026-10-04. The checklist distinguishes implemented behavior from outstanding work and browser verification.
+Status: AJAX listing and case-insensitive partial-title search with 300 ms debounce are implemented. Superuser modal creation with CSRF-protected AJAX POST, JSON validation/authorization responses, shared toast feedback, and query-preserving list refresh is implemented. Server-side Blog form tag stripping and live browser verification remain outstanding. Source and this status were reconciled on 2026-10-04. The checklist distinguishes implemented behavior from outstanding work and browser verification.
 
 Parent plan: [Portfolio layout and implementation](../portfolio-layout-plan.md)
 
@@ -30,7 +30,8 @@ Posts are ordered newest first by `-created_at`, then `-id`. Preserve that deter
 | URL | Name | Current behavior | Assignment 5 target |
 | --- | --- | --- | --- |
 | `/blog/` | `main:show_blog` | Public shell-only HTML page with title search; Fetch loads cards without navigation and debounces typing for 300 ms. | Render the page shell and controls, then load cards from the public JSON collection using Fetch. |
-| `/blog/add/` | `main:create_blog` | Superuser GET/POST traditional create form at `templates/blog_form.html`. | Add posts from a superuser-only modal on `/blog/`; keep this route only as a legacy route if it remains in source. |
+| `/blog/add/` | `main:create_blog` | Legacy superuser GET/POST traditional create form at `templates/blog_form.html`; the listing now uses a modal. | Retained for compatibility. |
+| `/blog/add-ajax/` | `main:create_blog_ajax` | Superuser-only POST validated with `BlogPostForm`; returns JSON `201`, `400`, or `403` and requires CSRF. | Used by the create modal on `/blog/`. |
 | `/blog/<int:id>/edit/` | `main:update_blog` | Editor/superuser GET/POST update form. | Preserve this existing Assignment 4 behavior unless separately changed by an explicit decision. |
 | `/blog/<int:id>/delete/` | `main:delete_blog` | Superuser POST-only delete. | Preserve role restriction and POST/CSRF protection. |
 | `/blog/<int:blog_id>/star/` | `main:toggle_blog_star` | Authenticated POST-only star toggle. | Preserve role restriction and ensure the AJAX JSON provides the count and current caller's own state. |
@@ -114,11 +115,11 @@ All complete pages extend `templates/base.html`, which provides shared assets, t
 - [x] Add Blog page JavaScript with Fetch, request-race handling, and loading/error/retry/empty states.
 - [x] Add 300 ms debounce for Blog title search.
 - [x] Render title, category, date, content, image, star controls, and role-dependent edit/delete controls using text-safe DOM construction.
-- [ ] Add a superuser-only create modal on `/blog/` using `BlogPostForm`.
-- [ ] Add a POST AJAX create endpoint with `201`, `400`, and `403` JSON responses and server-side role enforcement.
-- [ ] Send CSRF token with the modal request.
-- [ ] Refresh the displayed list after successful creation without navigation.
-- [ ] Reuse shared toast helper for successful creation and authorization/validation/network errors.
+- [x] Add a superuser-only create modal on `/blog/` using `BlogPostForm`.
+- [x] Add a POST AJAX create endpoint with `201`, `400`, and `403` JSON responses and server-side role enforcement.
+- [x] Send CSRF token with the modal request.
+- [x] Refresh the displayed list after successful creation without navigation.
+- [x] Reuse shared toast helper for successful creation and authorization/validation/network errors.
 - [ ] Strip tags in `clean_title` and `clean_content`; reject an empty-after-cleaning title.
 - [x] Preserve exact Editor update-only and superuser create/delete permissions, plus authenticated star behavior.
 - [x] Confirm all roles, including anonymous users, can load public Blog data.
@@ -128,6 +129,8 @@ All complete pages extend `templates/base.html`, which provides shared assets, t
 - [ ] Test an XSS payload such as `<img src="x" onerror="alert('XSS!')">`; verify no executable markup or alert appears.
 
 ## Current verification record
+
+The 2026-10-04 modal/AJAX creation implementation was verified with `python manage.py check` (two existing W042 warnings), all 72 Django tests passing, `node --check static/js/blog.js`, and `git diff --check`. Added tests cover superuser-only modal visibility, ModelForm validation, JSON `201`/`400`/`403`, server-side permission revocation, POST-only behavior, CSRF enforcement, public search visibility of created records, and ignored server-managed inputs. A temporary Node VM check with mocked DOM/FormData/fetch/timers verified successful reset/close/toast and current-query refresh, duplicate-submit prevention, validation/authorization/server/network feedback with retained form state, CSRF inclusion, and submit-button recovery. This is not live-browser verification. Server-side Blog form tag stripping and manual browser/XSS checks remain outstanding. The records below describe earlier implementation stages.
 
 The 2026-10-04 checklist review reflects the implemented AJAX list shell, manually composed JSON with aggregate and caller-specific star state, safe DOM rendering, and loading/error/retry/empty states. In this session, before this documentation-only update, `python manage.py check` completed with two existing W042 warnings, all 58 Django tests passed, and `node --check static/js/blog.js` passed. These commands were not rerun for this checklist update. Search/debouncing, AJAX creation, Blog form tag stripping, and live browser verification remain outstanding. The source review below is historical.
 

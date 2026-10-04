@@ -273,6 +273,25 @@ def create_blog(request):
     return render(request, "blog_form.html", context)
 
 
+@require_POST
+def create_blog_ajax(request):
+    if not request.user.is_superuser:
+        return JsonResponse(
+            {"message": "Hanya pemilik portofolio yang dapat menambahkan blog."},
+            status=403,
+        )
+
+    form = BlogPostForm(request.POST)
+    if form.is_valid():
+        blog_post = form.save()
+        return JsonResponse(
+            {"message": "Blog berhasil ditambahkan.", "pk": blog_post.pk},
+            status=201,
+        )
+
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+
+
 @protected(can_edit, ["GET", "POST"])
 def update_blog(request, id):
     blog_post = get_object_or_404(BlogPost, pk=id)
@@ -352,6 +371,7 @@ def show_blog(request):
         "name": "Victoriano Iman Santosa",
         "title_query": request.GET.get("title", "").strip(),
         "can_edit": can_edit(request.user),
+        "form": BlogPostForm() if request.user.is_superuser else None,
     }
     return render(request, "blog.html", context)
 

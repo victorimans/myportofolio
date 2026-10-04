@@ -10,7 +10,7 @@
 
                 {% if user.is_superuser %}
                     <p class="blog-page-actions">
-                        <a href="{% url 'main:create_blog' %}" class="button">Tambah Blog</a>
+                        <button type="button" class="button" popovertarget="add-blog-modal">Tambah Blog</button>
                     </p>
                 {% endif %}
 
@@ -45,6 +45,34 @@
                 </div>
             </div>
         </section>
+        {% if user.is_superuser %}
+            <div id="add-blog-modal" class="project-form-modal" popover="auto"
+                 role="dialog" aria-modal="true" aria-labelledby="add-blog-modal-title">
+                <button type="button" class="project-form-modal__backdrop"
+                        popovertarget="add-blog-modal" popovertargetaction="hide"
+                        aria-label="Tutup form tambah blog"></button>
+                <div class="project-form-modal__content">
+                    <button type="button" class="project-form-modal__close"
+                            popovertarget="add-blog-modal" popovertargetaction="hide"
+                            aria-label="Tutup form tambah blog">×</button>
+                    <h2 id="add-blog-modal-title">Tambah Blog Baru</h2>
+                    <form id="blog-form" method="post" action="{% url 'main:create_blog_ajax' %}" class="project-form">
+                        {% csrf_token %}
+                        {% for field in form %}
+                            <div class="form-group">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                            </div>
+                        {% endfor %}
+                        <div class="project-form-modal__actions">
+                            <button type="button" class="button button-secondary"
+                                    popovertarget="add-blog-modal" popovertargetaction="hide">Batal</button>
+                            <button type="submit" class="button">Tambah Blog</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
 {% endblock %}
 
 {% block extra_js %}

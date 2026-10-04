@@ -3,6 +3,7 @@
   const list = document.getElementById("blog-list");
   const searchForm = document.getElementById("blog-search-form");
   const searchInput = document.getElementById("blog-search-input");
+  const blogForm = document.getElementById("blog-form");
   const SEARCH_DEBOUNCE_DELAY = 300;
   if (!endpoints || !list || !searchForm || !searchInput) return;
 
@@ -139,6 +140,42 @@
     }
   }
 
+  async function addBlog(event) {
+    event.preventDefault();
+    const submitButton = blogForm.querySelector('button[type="submit"]');
+    if (submitButton.disabled) return;
+    submitButton.disabled = true;
+
+    try {
+      const response = await fetch(blogForm.action, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: new FormData(blogForm),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.status === 201) {
+        blogForm.reset();
+        document.getElementById("add-blog-modal").hidePopover();
+        showToast("Berhasil", result.message || "Blog berhasil ditambahkan.", "success");
+        window.clearTimeout(searchDebounceTimer);
+        searchBlog();
+        return;
+      }
+      const errorMessages = result.errors
+        ? Object.entries(result.errors).flatMap(([field, errors]) => {
+            const input = blogForm.elements.namedItem(field);
+            const label = input?.labels?.[0]?.textContent || field;
+            return errors.map((error) => `${label}: ${error.message}`);
+          })
+        : [result.message || `Terjadi kesalahan (status ${response.status}).`];
+      showToast("Gagal menambahkan blog", errorMessages.join(" "), "error");
+    } catch (error) {
+      showToast("Gagal menambahkan blog", "Tidak dapat terhubung ke server. Silakan coba lagi.", "error");
+    } finally {
+      submitButton.disabled = false;
+    }
+  }
+
   function searchBlog() {
     const query = searchInput.value.trim();
     const url = new URL(window.location.href);
@@ -162,5 +199,6 @@
     window.clearTimeout(searchDebounceTimer);
     searchBlog();
   });
+  blogForm?.addEventListener("submit", addBlog);
   fetchBlog(searchInput.value.trim());
 })();
