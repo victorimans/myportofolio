@@ -179,3 +179,38 @@ Karena percakapan dilakukan melalui OpenCode dan tidak tersedia sebagai URL shar
 - [Sesi implementasi checklist portofolio](<docs/AI Disclosure/Tugas 4/session-ses_f175.md>)
 
 
+## AI Disclosure Tugas 5
+
+Pada Tugas 5, saya menggunakan OpenCode sebagai AI coding agent untuk membantu mengimplementasikan interaktivitas pada halaman Blog sesuai spesifikasi di `docs/Portofolio-layout-plan/sections/blog.md`. Bantuan AI mencakup daftar Blog dan pencarian judul melalui AJAX, termasuk debounce 300 ms, serta alur penambahan post menggunakan modal khusus superuser dan permintaan POST AJAX. Implementasi penambahan menggunakan `BlogPostForm`, token CSRF, pemeriksaan hak akses di view, respons JSON dengan status `201`, `400`, atau `403`, feedback melalui toast bersama, dan pemuatan ulang daftar sesuai pencarian aktif tanpa navigasi halaman. AI juga membantu menambahkan tes dan memperbarui checklist spesifikasi untuk bagian yang telah dikerjakan.
+
+AI tidak menjadi sumber kebenaran final. Kode yang tampak lengkap belum membuktikan bahwa seluruh perilaku berjalan pada browser atau server sesungguhnya, dan hasil tes tetap harus dibandingkan dengan kontrak spesifikasi serta kondisi repository. Dalam sesi ini, pemeriksaan awal menemukan empat kegagalan karena ID input pada tes tidak sesuai dengan template; setelah ketidaksesuaian itu diperbaiki, rangkaian tes dijalankan ulang.
+
+Validasi yang tercatat pada sesi tersebut meliputi:
+
+- `python manage.py check` selesai dengan dua warning Django `W042` terkait primary key otomatis (`BlogPost` dan `Mahasiswa`);
+- seluruh 72 tes Django lulus;
+- `node --check static/js/blog.js` dan `git diff --check` lulus;
+- simulasi Node VM dengan DOM, `fetch`, `FormData`, dan timer tiruan memeriksa perilaku pencarian serta pengiriman form, token CSRF, respons sukses/validasi/otorisasi/error, dan pemulihan form. Simulasi ini bukan pemeriksaan browser langsung.
+
+Pemeriksaan visual melalui browser dan uji manual payload XSS tidak tercatat telah dilakukan. Pembersihan tag HTML pada input Blog di sisi server juga masih belum selesai; karena itu, saya tidak menyatakan bagian tersebut telah tervalidasi. Checklist pada spesifikasi hanya ditandai selesai untuk perilaku yang diimplementasikan dan diperiksa dalam sesi tersebut.
+
+AI digunakan sebagai alat bantu perencanaan, implementasi, penulisan tes, dan peninjauan. Saya tetap bertanggung jawab atas kesesuaian implementasi terhadap spesifikasi, keputusan akhir, dan kebenaran klaim verifikasi.
+
+Ekspor sesi OpenCode disertakan di repository:
+
+- [Sesi implementasi Blog Tugas 5](<docs/AI Disclosure/Tugas 5/session-ses_ef8e.md>)
+
+# Tugas 5
+## Pertanyaan :
+1. Jelaskan apa itu debouncing dan mengapa teknik ini penting diterapkan pada fitur pencarian yang menggunakan AJAX!
+
+2. Jelaskan fungsi dari penggunaan await ketika kita menggunakan fetch()! Apa yang akan terjadi jika kita tidak menggunakan await?
+
+3. Jelaskan apa itu serangan XSS (Cross-Site Scripting) dan mengapa data yang ditampilkan melalui AJAX/JavaScript lebih rentan terhadap serangan ini daripada data yang ditampilkan langsung melalui template Django!
+
+## Jawaban :
+1. Debouncing menunda pemanggilan fungsi sampai pengguna berhenti mengetik selama jeda tertentu, misalnya 300 ms. Pada pencarian AJAX, teknik ini mengurangi request yang tidak perlu saat pengguna masih mengetik sehingga penggunaan server lebih efisien dan hasil pencarian tidak terus diperbarui untuk setiap karakter.
+
+2. `await` menunggu Promise dari `fetch()` selesai sebelum kode melanjutkan ke langkah berikutnya, misalnya membaca JSON dari response. Tanpa `await`, `fetch()` langsung menghasilkan Promise sehingga kode berikutnya dapat berjalan sebelum response tersedia; penanganannya perlu menggunakan `.then()` atau mekanisme async lain.
+
+3. XSS (Cross-Site Scripting) adalah serangan ketika input berisi skrip atau markup berbahaya ditampilkan dan dijalankan di browser pengguna. Data AJAX/JavaScript lebih rentan jika dimasukkan ke halaman sebagai HTML, misalnya melalui `innerHTML`, karena browser dapat menafsirkan markup tersebut. Template Django secara default melakukan autoescape pada nilai yang ditampilkan, sehingga karakter HTML berbahaya ditampilkan sebagai teks. Saat merender data AJAX, gunakan `textContent` atau DOM API yang aman dan jangan menganggap data dari server selalu tepercaya.

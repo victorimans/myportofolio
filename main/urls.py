@@ -2,6 +2,7 @@ from django.urls import path
 
 from main.views import (
     create_blog,
+    create_blog_ajax,
     create_project,
     create_project_ajax,
     delete_blog,
@@ -41,6 +42,7 @@ urlpatterns = [
     path("projects/<uuid:project_id>/star/", toggle_star, name="toggle_star"),
     path("experience/", show_experience, name="show_experience"),
     path("blog/add/", create_blog, name="create_blog"),
+    path("blog/add-ajax/", create_blog_ajax, name="create_blog_ajax"),
     path("blog/<int:id>/edit/", update_blog, name="update_blog"),
     path("blog/<int:id>/delete/", delete_blog, name="delete_blog"),
     path("blog/<int:blog_id>/star/", toggle_blog_star, name="toggle_blog_star"),

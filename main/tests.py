@@ -1,18 +1,21 @@
 import json
+import re
 import uuid
+from datetime import timedelta
 from urllib.parse import parse_qs, urlsplit
 from unittest.mock import patch
 
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.core import serializers
 from django.db import connection
-from django.http import HttpResponse
+from django.http import JsonResponse
 from django.test import Client, TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
+from main.forms import BlogPostForm
 from main.models import BlogPost, Experience, Project
 
 
@@ -219,7 +222,10 @@ class MainTest(TestCase):
 
         blog_post = BlogPost.objects.get(title="A blog created from the form")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, blog_post.content)
+        self.assertNotContains(response, blog_post.content)
+        self.assertEqual(blog_post.content, "This post was submitted without using the Admin.")
+        self.assertEqual(blog_post.category, "ai")
+        self.assertRedirects(response, reverse("main:show_blog"))
         self.assertContains(response, "Blog baru berhasil ditambahkan!")
 
     def test_blog_form_renders_all_editable_fields(self):
@@ -266,7 +272,9 @@ class MainTest(TestCase):
         self.assertEqual(blog_post.title, "Updated title")
         self.assertEqual(blog_post.category, "dsa")
         self.assertEqual(blog_post.picture_link, "https://example.com/updated.jpg")
-        self.assertContains(response, "Updated title")
+        self.assertEqual(blog_post.content, "Updated content")
+        self.assertNotContains(response, blog_post.title)
+        self.assertRedirects(response, reverse("main:show_blog"))
         self.assertContains(response, "Blog berhasil diperbarui!")
 
     def test_delete_blog_removes_post_and_rejects_get(self):
@@ -318,22 +326,88 @@ class MainTest(TestCase):
         )
         timestamp = timezone.now()
         BlogPost.objects.filter(pk__in=[older_post.pk, newer_post.pk]).update(created_at=timestamp)
+        newest_post = BlogPost.objects.create(title="Newest JSON blog", content="Newest content")
+        BlogPost.objects.filter(pk=newest_post.pk).update(created_at=timestamp + timedelta(days=1))
+        newer_post.refresh_from_db()
 
-        response = self.client.get(reverse("main:get_blog_json"))
-        data = json.loads(response.content)
+        with patch("main.views.serializers.serialize", side_effect=AssertionError("Listing must use manual JSON")):
+            response = self.client.get(reverse("main:get_blog_json"))
+        data = response.json()
 
         self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response, JsonResponse)
         self.assertEqual(response["Content-Type"], "application/json")
-        self.assertEqual([item["pk"] for item in data[:2]], [newer_post.pk, older_post.pk])
-        self.assertEqual(data[0]["fields"]["title"], "Newer JSON blog")
-        self.assertEqual(data[0]["fields"]["content"], "Newer JSON content")
-        self.assertEqual(data[0]["fields"]["category"], "web-development")
-        self.assertEqual(data[0]["fields"]["picture_link"], "https://example.com/blog.jpg")
-        self.assertAlmostEqual(
-            timezone.datetime.fromisoformat(data[0]["fields"]["created_at"].replace("Z", "+00:00")).timestamp(),
-            newer_post.created_at.timestamp(),
-            delta=0.001,
+        self.assertIsInstance(data, list)
+        self.assertEqual([item["pk"] for item in data], [newest_post.pk, newer_post.pk, older_post.pk])
+        for item in data:
+            self.assertIs(type(item["pk"]), int)
+            self.assertEqual(set(item), {"pk", "fields"})
+            self.assertEqual(set(item["fields"]), {
+                "title", "content", "category", "picture_link", "created_at",
+                "category_display", "star_count", "is_starred",
+            })
+            self.assertIs(type(item["fields"]["star_count"]), int)
+            self.assertIs(item["fields"]["is_starred"], False)
+            self.assertEqual(item["fields"]["star_count"], 0)
+        fields = data[1]["fields"]
+        self.assertEqual(fields["title"], newer_post.title)
+        self.assertEqual(fields["content"], newer_post.content)
+        self.assertEqual(fields["category"], newer_post.category)
+        self.assertEqual(fields["category_display"], newer_post.get_category_display())
+        self.assertEqual(fields["picture_link"], newer_post.picture_link)
+        self.assertEqual(
+            timezone.datetime.fromisoformat(fields["created_at"].replace("Z", "+00:00")),
+            newer_post.created_at,
         )
+
+    def test_blog_json_search_matches_partial_case_insensitive_titles_not_content(self):
+        matching_post = BlogPost.objects.create(
+            title="Learning Django with AJAX",
+            content="A title search result.",
+        )
+        BlogPost.objects.create(
+            title="Unrelated writing",
+            content="Learning Django with AJAX appears only in the body.",
+        )
+
+        for title_query in ("django", "DJANGO", "arning dJanGo with"):
+            with self.subTest(title_query=title_query):
+                response = self.client.get(reverse("main:get_blog_json"), {"title": title_query})
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual([item["pk"] for item in response.json()], [matching_post.pk])
+                self.assertEqual(response.json()[0]["fields"]["title"], matching_post.title)
+
+    def test_blog_json_search_trims_surrounding_whitespace(self):
+        matching_post = BlogPost.objects.create(title="Django notes", content="Matching content")
+        BlogPost.objects.create(title="Other notes", content="Unrelated content")
+
+        response = self.client.get(reverse("main:get_blog_json"), {"title": " \tDjango\n "})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["pk"] for item in response.json()], [matching_post.pk])
+
+    def test_blog_json_missing_empty_and_whitespace_search_return_all_posts(self):
+        older_post = BlogPost.objects.create(title="Older writing", content="Older content")
+        newer_post = BlogPost.objects.create(title="Newer writing", content="Newer content")
+        BlogPost.objects.filter(pk__in=[older_post.pk, newer_post.pk]).update(created_at=timezone.now())
+
+        for params in ({}, {"title": ""}, {"title": " \t\n "}):
+            with self.subTest(params=params):
+                response = self.client.get(reverse("main:get_blog_json"), params)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual([item["pk"] for item in response.json()], [newer_post.pk, older_post.pk])
+
+    def test_blog_json_search_without_matches_returns_empty_list(self):
+        BlogPost.objects.create(title="Existing writing", content="Existing content")
+
+        response = self.client.get(reverse("main:get_blog_json"), {"title": "not-found"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response, JsonResponse)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json(), [])
 
     def test_blogpost_database_schema_contains_model_fields(self):
         column_names = {
@@ -356,8 +430,7 @@ class MainTest(TestCase):
         self.assertContains(list_response, 'href="/static/css/style.css"')
         self.assertContains(form_response, 'href="/static/css/style.css"')
 
-    def test_blog_page_displays_category_and_picture(self):
-        self.login_as_owner()
+    def test_blog_json_returns_category_display_and_picture(self):
         blog_post = BlogPost.objects.create(
             title="A categorized post",
             content="Post content",
@@ -365,37 +438,36 @@ class MainTest(TestCase):
             picture_link="https://example.com/ai.jpg",
         )
 
-        response = self.client.get(reverse("main:show_blog"))
+        response = self.client.get(reverse("main:get_blog_json"))
 
-        self.assertContains(response, blog_post.title)
-        self.assertContains(response, "AI")
-        self.assertContains(response, blog_post.picture_link)
-        expected_date = f"{blog_post.created_at.day} {blog_post.created_at.strftime('%B %Y')}"
-        self.assertContains(response, expected_date)
-        self.assertContains(response, f'alt="Gambar {blog_post.title}"')
-        self.assertContains(response, f'aria-label="Edit blog: {blog_post.title}"')
-        self.assertContains(response, f'aria-label="Delete blog: {blog_post.title}"')
-        self.assertContains(response, reverse("main:update_blog", args=[blog_post.id]))
-        self.assertContains(response, reverse("main:delete_blog", args=[blog_post.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]["fields"]["category_display"], "AI")
+        self.assertEqual(response.json()[0]["fields"]["picture_link"], blog_post.picture_link)
 
-    def test_blog_page_renders_deserialized_json_objects(self):
+    def test_blog_shell_does_not_load_collection_or_call_json_endpoint(self):
         blog_post = BlogPost.objects.create(
             title="JSON-backed title",
             content="JSON-backed content",
             category="personal",
         )
-        json_response = HttpResponse(
-            serializers.serialize("json", [blog_post]),
-            content_type="application/json",
-        )
+        self.login_as_owner()
+        anonymous_client = Client()
+        for client in (anonymous_client, self.client):
+            with self.subTest(authenticated=client == self.client):
+                with patch("main.views.get_blog_json") as get_blog_json:
+                    with CaptureQueriesContext(connection) as queries:
+                        response = client.get(reverse("main:show_blog"))
 
-        with patch("main.views.get_blog_json", return_value=json_response) as get_blog_json:
-            response = self.client.get(reverse("main:show_blog"))
-
-        get_blog_json.assert_called_once()
-        self.assertContains(response, "JSON-backed title")
-        self.assertContains(response, "JSON-backed content")
-        self.assertEqual(response.context["blog_posts"][0].__class__, BlogPost)
+                get_blog_json.assert_not_called()
+                self.assertEqual(response.status_code, 200)
+                self.assertTemplateUsed(response, "blog.html")
+                self.assertNotIn("blog_posts", response.context)
+                self.assertNotContains(response, blog_post.title)
+                self.assertNotContains(response, blog_post.content)
+                self.assertFalse(any(
+                    BlogPost._meta.db_table.lower() in query["sql"].lower()
+                    for query in queries.captured_queries
+                ))
 
     def test_blog_writes_require_superuser(self):
         blog_post = BlogPost.objects.create(title="Protected", content="Keep this post.")
@@ -417,39 +489,42 @@ class MainTest(TestCase):
         self.assertEqual(blog_post.title, "Protected")
         self.assertFalse(BlogPost.objects.filter(title="Changed").exists())
 
-    def test_blog_page_displays_stored_post_title_and_content(self):
+    def test_blog_json_returns_stored_post_title_and_content(self):
         blog_post = BlogPost.objects.create(
             title="My first blog post",
             content="This is the content of my first blog post.",
         )
 
-        response = self.client.get(reverse("main:show_blog"))
+        response = self.client.get(reverse("main:get_blog_json"))
 
-        self.assertContains(response, blog_post.title)
-        self.assertContains(response, blog_post.content)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]["fields"]["title"], blog_post.title)
+        self.assertEqual(response.json()[0]["fields"]["content"], blog_post.content)
 
     def test_blog_posts_are_ordered_newest_first(self):
         older_post = BlogPost.objects.create(title="Older post", content="Older content")
         newer_post = BlogPost.objects.create(title="Newer post", content="Newer content")
         timestamp = timezone.now()
-        BlogPost.objects.filter(pk__in=[older_post.pk, newer_post.pk]).update(created_at=timestamp)
+        BlogPost.objects.filter(pk=older_post.pk).update(created_at=timestamp)
+        BlogPost.objects.filter(pk=newer_post.pk).update(created_at=timestamp - timedelta(days=1))
 
-        response = self.client.get(reverse("main:show_blog"))
-        rendered_html = response.content.decode()
+        response = self.client.get(reverse("main:get_blog_json"))
 
-        self.assertLess(rendered_html.index(newer_post.title), rendered_html.index(older_post.title))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["pk"] for item in response.json()], [older_post.pk, newer_post.pk])
 
-    def test_blog_content_preserves_line_breaks_and_escapes_html(self):
-        BlogPost.objects.create(
+    def test_blog_json_preserves_line_breaks_and_markup_as_data(self):
+        blog_post = BlogPost.objects.create(
             title="Plain text post",
             content="First line\nSecond line\n\n<strong>Not raw HTML</strong>",
         )
 
-        response = self.client.get(reverse("main:show_blog"))
+        response = self.client.get(reverse("main:get_blog_json"))
 
-        self.assertContains(response, "First line<br>Second line")
-        self.assertContains(response, "&lt;strong&gt;Not raw HTML&lt;/strong&gt;")
-        self.assertNotContains(response, "<strong>Not raw HTML</strong>")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]["fields"]["content"], blog_post.content)
+        shell_response = self.client.get(reverse("main:show_blog"))
+        self.assertNotContains(shell_response, "<strong>Not raw HTML</strong>")
 
     def test_blog_nav_link_is_available_on_all_pages(self):
         for route_name in ("main:show_main", "main:show_experience", "main:show_blog"):
@@ -457,17 +532,17 @@ class MainTest(TestCase):
 
             self.assertContains(response, f'href="{reverse("main:show_blog")}"')
 
-    def test_empty_blog_page_displays_empty_state(self):
-        response = self.client.get(reverse("main:show_blog"))
+    def test_empty_blog_json_returns_empty_list(self):
+        response = self.client.get(reverse("main:get_blog_json"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "blog.html")
-        self.assertContains(response, "No blog posts have been added yet.")
+        self.assertIsInstance(response, JsonResponse)
+        self.assertEqual(response.json(), [])
 
     def test_blog_post_is_registered_in_default_admin(self):
         self.assertIn(BlogPost, admin.site._registry)
 
-    def test_admin_created_blog_post_appears_on_blog_page(self):
+    def test_admin_created_blog_post_appears_in_blog_json(self):
         get_user_model().objects.create_superuser(
             username="blog-admin",
             email="blog-admin@example.com",
@@ -486,9 +561,10 @@ class MainTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
-        blog_response = self.client.get(reverse("main:show_blog"))
-        self.assertContains(blog_response, "Admin-created post")
-        self.assertContains(blog_response, "Content entered through Django Admin.")
+        blog_response = self.client.get(reverse("main:get_blog_json"))
+        self.assertEqual(blog_response.status_code, 200)
+        self.assertEqual(blog_response.json()[0]["fields"]["title"], "Admin-created post")
+        self.assertEqual(blog_response.json()[0]["fields"]["content"], "Content entered through Django Admin.")
 
 
 class AuthorizationAcceptanceTests(TestCase):
@@ -540,11 +616,81 @@ class AuthorizationAcceptanceTests(TestCase):
                     if url == reverse("main:show_projects"):
                         self.assertContains(response, 'id="project-grid"')
                         self.assertNotContains(response, title)
+                    elif url == reverse("main:show_blog"):
+                        self.assertEqual(response.status_code, 200)
+                        self.assertTemplateUsed(response, "blog.html")
+                        self.assertNotContains(response, title)
+                        self.assertNotIn("blog_posts", response.context)
                     else:
                         self.assertContains(response, title)
         self.assertEqual(self.clients["anonymous"].get(
             reverse("main:show_blog_json_by_id", args=[self.post.pk + 1000])
         ).status_code, 404)
+
+    def test_blog_title_search_preserves_order_star_state_and_privacy_for_every_role(self):
+        self.post.starred_by.add(self.member, self.editor)
+        tied_post = BlogPost.objects.create(title="Another PUBLIC blog", content="Another result")
+        newest_post = BlogPost.objects.create(title="Newest public blog", content="Newest result")
+        BlogPost.objects.create(title="Unrelated title", content="Public appears only in the body")
+        timestamp = timezone.now()
+        BlogPost.objects.filter(pk__in=[self.post.pk, tied_post.pk]).update(created_at=timestamp)
+        BlogPost.objects.filter(pk=newest_post.pk).update(created_at=timestamp + timedelta(days=1))
+
+        for role, client in self.clients.items():
+            with self.subTest(role=role):
+                response = client.get(reverse("main:get_blog_json"), {"title": "  pUbLiC  "})
+                data = response.json()
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response["Content-Type"], "application/json")
+                self.assertEqual([item["pk"] for item in data], [newest_post.pk, tied_post.pk, self.post.pk])
+                for item in data:
+                    self.assertIs(type(item["pk"]), int)
+                    self.assertEqual(set(item), {"pk", "fields"})
+                    self.assertEqual(set(item["fields"]), {
+                        "title", "content", "category", "picture_link", "created_at",
+                        "category_display", "star_count", "is_starred",
+                    })
+                    self.assertEqual(item["fields"]["star_count"], 2 if item["pk"] == self.post.pk else 0)
+                    self.assertIs(
+                        item["fields"]["is_starred"],
+                        item["pk"] == self.post.pk and role in ("member", "editor"),
+                    )
+                for user in (self.member, self.editor, self.owner):
+                    self.assertNotIn(user.username, response.content.decode())
+                    if user.email:
+                        self.assertNotIn(user.email, response.content.decode())
+
+    def test_blog_search_shell_preserves_escaped_query_and_controls_for_every_role(self):
+        title_query = '\"><script>alert(1)</script>&'
+        escaped_query = '&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;&amp;'
+
+        for role, client in self.clients.items():
+            with self.subTest(role=role):
+                with patch("main.views.get_blog_json") as get_blog_json:
+                    with CaptureQueriesContext(connection) as queries:
+                        response = client.get(reverse("main:show_blog"), {"title": f"  {title_query}  "})
+
+                get_blog_json.assert_not_called()
+                self.assertEqual(response.status_code, 200)
+                self.assertTemplateUsed(response, "blog.html")
+                self.assertEqual(response.context["title_query"], title_query)
+                self.assertContains(response, f'value="{escaped_query}"')
+                self.assertNotContains(response, title_query)
+                self.assertContains(response, 'id="blog-search-form"')
+                self.assertContains(response, 'id="blog-search-input"')
+                self.assertContains(response, 'name="title"')
+                self.assertContains(response, 'type="search"')
+                self.assertContains(response, 'id="blog-list"')
+                self.assertContains(response, f'data-json-url="{reverse("main:get_blog_json")}"')
+                self.assertContains(response, 'src="/static/js/blog.js"')
+                self.assertNotIn("blog_posts", response.context)
+                self.assertNotContains(response, self.post.title)
+                self.assertNotContains(response, self.post.content)
+                self.assertFalse(any(
+                    BlogPost._meta.db_table.lower() in query["sql"].lower()
+                    for query in queries.captured_queries
+                ))
 
     def test_project_detail_html_is_public(self):
         url = reverse("main:show_project_detail", args=[self.project.pk])
@@ -553,6 +699,342 @@ class AuthorizationAcceptanceTests(TestCase):
                 response = client.get(url)
                 self.assertContains(response, self.project.title)
                 self.assertNotContains(response, 'popovertarget="add-project-modal"')
+
+    def test_add_blog_modal_is_available_only_to_superuser(self):
+        create_url = reverse("main:create_blog_ajax")
+        self.assertEqual(create_url, "/blog/add-ajax/")
+        for role, client in self.clients.items():
+            with self.subTest(role=role):
+                response = client.get(reverse("main:show_blog"))
+                self.assertEqual(response.status_code, 200)
+                if role == "owner":
+                    self.assertContains(response, 'popovertarget="add-blog-modal"')
+                    self.assertContains(response, 'id="add-blog-modal"')
+                    self.assertContains(response, 'id="blog-form"')
+                    form_match = re.search(
+                        r'<form\b(?=[^>]*\bid="blog-form")[^>]*>.*?</form>',
+                        response.content.decode(),
+                        re.DOTALL,
+                    )
+                    self.assertIsNotNone(form_match)
+                    form_html = form_match.group()
+                    self.assertIn(f'action="{create_url}"', form_html)
+                    self.assertRegex(form_html, r'method="(?i:post)"')
+                    self.assertIn('name="csrfmiddlewaretoken"', form_html)
+                    for field_name in BlogPostForm().fields:
+                        self.assertIn(f'name="{field_name}"', form_html)
+                    for field_name in ("id", "pk", "created_at", "starred_by"):
+                        self.assertNotIn(f'name="{field_name}"', form_html)
+                else:
+                    self.assertNotContains(response, 'id="add-blog-modal"')
+                    self.assertNotContains(response, 'popovertarget="add-blog-modal"')
+                    self.assertNotContains(response, 'id="blog-form"')
+                    self.assertNotContains(response, "Tambah Blog")
+
+    def test_blog_ajax_create_persists_post_and_exposes_it_in_public_search(self):
+        response = self.clients["owner"].post(reverse("main:create_blog_ajax"), self.blog_data)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertIsInstance(response, JsonResponse)
+        self.assertEqual(response["Content-Type"], "application/json")
+        payload = response.json()
+        self.assertIs(type(payload["pk"]), int)
+        blog_post = BlogPost.objects.get(pk=payload["pk"])
+        self.assertEqual(payload, {
+            "message": "Blog berhasil ditambahkan.",
+            "pk": blog_post.pk,
+        })
+        self.assertEqual(BlogPost.objects.count(), 2)
+        for field_name, value in self.blog_data.items():
+            self.assertEqual(getattr(blog_post, field_name), value)
+        for params in ({}, {"title": "  CHANGED  "}):
+            with self.subTest(params=params):
+                listing = self.clients["anonymous"].get(reverse("main:get_blog_json"), params)
+                self.assertEqual(listing.status_code, 200)
+                records = listing.json()
+                record = next(item for item in records if item["pk"] == blog_post.pk)
+                for field_name, value in self.blog_data.items():
+                    self.assertEqual(record["fields"][field_name], value)
+                if params:
+                    self.assertEqual([item["pk"] for item in records], [blog_post.pk])
+
+    def test_blog_ajax_create_returns_form_errors_without_mutation(self):
+        original_posts = list(BlogPost.objects.values())
+        cases = (
+            ("title", None, "required"),
+            ("content", None, "required"),
+            ("title", "", "required"),
+            ("content", "", "required"),
+            ("category", "not-a-category", "invalid_choice"),
+            ("picture_link", "not-a-url", "invalid"),
+        )
+        for field_name, value, code in cases:
+            with self.subTest(field_name=field_name, value=value):
+                data = self.blog_data.copy()
+                if value is None:
+                    data.pop(field_name)
+                else:
+                    data[field_name] = value
+                form = BlogPostForm(data)
+                self.assertFalse(form.is_valid())
+                response = self.clients["owner"].post(reverse("main:create_blog_ajax"), data)
+
+                self.assertEqual(response.status_code, 400)
+                self.assertIsInstance(response, JsonResponse)
+                self.assertEqual(response["Content-Type"], "application/json")
+                self.assertEqual(response.json(), {"errors": form.errors.get_json_data()})
+                self.assertEqual(response.json()["errors"][field_name][0]["code"], code)
+                self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_ajax_create_strips_markup_and_preserves_plain_text_and_line_breaks(self):
+        response = self.clients["owner"].post(reverse("main:create_blog_ajax"), {
+            **self.blog_data,
+            "title": '  <b>Halo</b> <img src="x" onerror="alert(1)">dunia  ',
+            "content": '  <strong>First line</strong>\nSecond line\n\n<img src="x" onerror="alert(1)">Last line  ',
+        })
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response["Content-Type"], "application/json")
+        blog_post = BlogPost.objects.get(pk=response.json()["pk"])
+        self.assertEqual(BlogPost.objects.count(), 2)
+        self.assertEqual(blog_post.title, "Halo dunia")
+        self.assertEqual(blog_post.content, "First line\nSecond line\n\nLast line")
+        listing = self.clients["anonymous"].get(reverse("main:get_blog_json"))
+        self.assertEqual(listing.status_code, 200)
+        record = next(item for item in listing.json() if item["pk"] == blog_post.pk)
+        self.assertEqual(record["fields"]["title"], "Halo dunia")
+        self.assertEqual(record["fields"]["content"], "First line\nSecond line\n\nLast line")
+
+    def test_blog_ajax_create_rejects_tag_only_title_and_content_without_saving(self):
+        original_posts = list(BlogPost.objects.values())
+        for field_name, message in (
+            ("title", "Judul blog tidak boleh hanya berisi tag HTML."),
+            ("content", "Isi blog tidak boleh hanya berisi tag HTML."),
+        ):
+            for value in ('<img src="x" onerror="alert(1)">', "<b> \n </b>"):
+                with self.subTest(field_name=field_name, value=value):
+                    response = self.clients["owner"].post(reverse("main:create_blog_ajax"), {
+                        **self.blog_data,
+                        field_name: value,
+                    })
+
+                    self.assertEqual(response.status_code, 400)
+                    self.assertEqual(response["Content-Type"], "application/json")
+                    self.assertEqual(set(response.json()["errors"]), {field_name})
+                    self.assertEqual(response.json()["errors"][field_name][0]["message"], message)
+                    self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_traditional_create_strips_markup_and_preserves_line_breaks(self):
+        response = self.clients["owner"].post(reverse("main:create_blog"), {
+            **self.blog_data,
+            "title": '  <b>Halo</b> <img src="x" onerror="alert(1)">dunia  ',
+            "content": '  <em>First line</em>\nSecond line\n\n<img src="x" onerror="alert(1)">Last line  ',
+        })
+
+        self.assertRedirects(response, reverse("main:show_blog"))
+        self.assertEqual(BlogPost.objects.count(), 2)
+        blog_post = BlogPost.objects.exclude(pk=self.post.pk).get()
+        self.assertEqual(blog_post.title, "Halo dunia")
+        self.assertEqual(blog_post.content, "First line\nSecond line\n\nLast line")
+
+    def test_blog_traditional_create_rejects_tag_only_title_and_content_without_saving(self):
+        original_posts = list(BlogPost.objects.values())
+        for field_name, message in (
+            ("title", "Judul blog tidak boleh hanya berisi tag HTML."),
+            ("content", "Isi blog tidak boleh hanya berisi tag HTML."),
+        ):
+            for value in ('<img src="x" onerror="alert(1)">', "<b> \n </b>"):
+                with self.subTest(field_name=field_name, value=value):
+                    response = self.clients["owner"].post(reverse("main:create_blog"), {
+                        **self.blog_data,
+                        field_name: value,
+                    })
+
+                    self.assertEqual(response.status_code, 200)
+                    self.assertTemplateUsed(response, "blog_form.html")
+                    self.assertFormError(response.context["form"], field_name, message)
+                    self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_update_strips_markup_and_preserves_line_breaks(self):
+        created_at = self.post.created_at
+        response = self.clients["editor"].post(reverse("main:update_blog", args=[self.post.pk]), {
+            **self.blog_data,
+            "title": '  <b>Halo</b> <img src="x" onerror="alert(1)">dunia  ',
+            "content": '  <em>First line</em>\nSecond line\n\n<img src="x" onerror="alert(1)">Last line  ',
+        })
+
+        self.assertRedirects(response, reverse("main:show_blog"))
+        self.post.refresh_from_db()
+        self.assertEqual(BlogPost.objects.count(), 1)
+        self.assertEqual(self.post.created_at, created_at)
+        self.assertEqual(self.post.title, "Halo dunia")
+        self.assertEqual(self.post.content, "First line\nSecond line\n\nLast line")
+
+    def test_blog_update_rejects_tag_only_title_and_content_without_saving(self):
+        original_posts = list(BlogPost.objects.values())
+        for field_name, message in (
+            ("title", "Judul blog tidak boleh hanya berisi tag HTML."),
+            ("content", "Isi blog tidak boleh hanya berisi tag HTML."),
+        ):
+            for value in ('<img src="x" onerror="alert(1)">', "<b> \n </b>"):
+                with self.subTest(field_name=field_name, value=value):
+                    response = self.clients["editor"].post(
+                        reverse("main:update_blog", args=[self.post.pk]),
+                        {**self.blog_data, field_name: value},
+                    )
+
+                    self.assertEqual(response.status_code, 200)
+                    self.assertTemplateUsed(response, "blog_form.html")
+                    self.assertFormError(response.context["form"], field_name, message)
+                    self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_writes_reject_javascript_picture_url_without_saving(self):
+        original_posts = list(BlogPost.objects.values())
+        routes = (
+            ("owner", reverse("main:create_blog_ajax"), 400),
+            ("owner", reverse("main:create_blog"), 200),
+            ("editor", reverse("main:update_blog", args=[self.post.pk]), 200),
+        )
+        for role, url, status_code in routes:
+            with self.subTest(url=url):
+                response = self.clients[role].post(url, {
+                    **self.blog_data,
+                    "picture_link": "javascript:alert(1)",
+                })
+
+                self.assertEqual(response.status_code, status_code)
+                if status_code == 400:
+                    self.assertEqual(response["Content-Type"], "application/json")
+                    self.assertEqual(set(response.json()["errors"]), {"picture_link"})
+                    self.assertEqual(response.json()["errors"]["picture_link"][0]["code"], "invalid")
+                else:
+                    self.assertTemplateUsed(response, "blog_form.html")
+                    self.assertEqual(set(response.context["form"].errors), {"picture_link"})
+                    self.assertEqual(response.context["form"].errors.as_data()["picture_link"][0].code, "invalid")
+                self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_existing_blog_markup_remains_plain_json_data_without_mutation(self):
+        legacy = BlogPost.objects.create(
+            title='<img src="x" onerror="alert(1)">Legacy <b>title</b>',
+            content='First line\n\n<script>alert(1)</script><img src="x" onerror="alert(1)">',
+        )
+        original_posts = list(BlogPost.objects.values())
+        for url in (
+            reverse("main:get_blog_json"),
+            reverse("main:show_blog_json_by_id", args=[legacy.pk]),
+        ):
+            with self.subTest(url=url):
+                response = self.clients["anonymous"].get(url)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response["Content-Type"], "application/json")
+                record = next(item for item in response.json() if item["pk"] == legacy.pk)
+                self.assertIsInstance(record["fields"]["title"], str)
+                self.assertIsInstance(record["fields"]["content"], str)
+                self.assertEqual(record["fields"]["title"], legacy.title)
+                self.assertEqual(record["fields"]["content"], legacy.content)
+                self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_ajax_create_rejects_non_superusers_with_json(self):
+        original_posts = list(BlogPost.objects.values())
+        for role in ("anonymous", "member", "editor"):
+            with self.subTest(role=role):
+                response = self.clients[role].post(reverse("main:create_blog_ajax"), self.blog_data)
+
+                self.assertEqual(response.status_code, 403)
+                self.assertIsInstance(response, JsonResponse)
+                self.assertEqual(response["Content-Type"], "application/json")
+                self.assertIn("message", response.json())
+                self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_ajax_create_rechecks_revoked_superuser_permission(self):
+        self.assertContains(
+            self.clients["owner"].get(reverse("main:show_blog")),
+            'id="add-blog-modal"',
+        )
+        self.owner.groups.add(self.editor_group)
+        get_user_model().objects.filter(pk=self.owner.pk).update(is_superuser=False)
+        original_posts = list(BlogPost.objects.values())
+
+        response = self.clients["owner"].post(reverse("main:create_blog_ajax"), self.blog_data)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIsInstance(response, JsonResponse)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertIn("message", response.json())
+        self.assertEqual(list(BlogPost.objects.values()), original_posts)
+        page = self.clients["owner"].get(reverse("main:show_blog"))
+        self.assertNotContains(page, 'id="add-blog-modal"')
+        self.assertNotContains(page, 'popovertarget="add-blog-modal"')
+
+    def test_blog_ajax_create_is_post_only(self):
+        url = reverse("main:create_blog_ajax")
+        original_posts = list(BlogPost.objects.values())
+        for role, client in self.clients.items():
+            for method in ("get", "head", "put", "patch", "delete", "options"):
+                with self.subTest(role=role, method=method):
+                    response = getattr(client, method)(url)
+                    self.assertEqual(response.status_code, 405)
+                    self.assertEqual(response["Allow"], "POST")
+                    self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+    def test_blog_ajax_create_requires_csrf_and_accepts_modal_form_token(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.owner)
+        url = reverse("main:create_blog_ajax")
+        original_posts = list(BlogPost.objects.values())
+        self.assertEqual(client.post(url, self.blog_data).status_code, 403)
+        self.assertEqual(list(BlogPost.objects.values()), original_posts)
+        page = client.get(reverse("main:show_blog"))
+        self.assertEqual(page.status_code, 200)
+        form_match = re.search(
+            r'<form\b(?=[^>]*\bid="blog-form")[^>]*>.*?</form>',
+            page.content.decode(),
+            re.DOTALL,
+        )
+        self.assertIsNotNone(form_match)
+        token_match = re.search(
+            r'<input\b(?=[^>]*\bname="csrfmiddlewaretoken")[^>]*\bvalue="([^"]+)"',
+            form_match.group(),
+        )
+        self.assertIsNotNone(token_match)
+        self.assertEqual(client.post(url, self.blog_data).status_code, 403)
+        self.assertEqual(list(BlogPost.objects.values()), original_posts)
+
+        response = client.post(url, {
+            **self.blog_data,
+            "csrfmiddlewaretoken": token_match.group(1),
+        })
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(BlogPost.objects.filter(pk=response.json()["pk"], **self.blog_data).exists())
+        self.assertEqual(BlogPost.objects.count(), 2)
+
+    def test_blog_ajax_create_ignores_server_managed_fields(self):
+        self.post.starred_by.add(self.member)
+        original_post = BlogPost.objects.values().get(pk=self.post.pk)
+        before_create = timezone.now()
+        response = self.clients["owner"].post(reverse("main:create_blog_ajax"), {
+            **self.blog_data,
+            "id": self.post.pk,
+            "pk": 99999,
+            "created_at": "2000-01-01T00:00:00Z",
+            "starred_by": [self.member.pk, self.editor.pk],
+        })
+        after_create = timezone.now()
+
+        self.assertEqual(response.status_code, 201)
+        blog_post = BlogPost.objects.get(pk=response.json()["pk"])
+        self.assertIs(type(blog_post.pk), int)
+        self.assertNotIn(blog_post.pk, (self.post.pk, 99999))
+        self.assertGreaterEqual(blog_post.created_at, before_create)
+        self.assertLessEqual(blog_post.created_at, after_create)
+        self.assertFalse(blog_post.starred_by.exists())
+        for field_name, value in self.blog_data.items():
+            self.assertEqual(getattr(blog_post, field_name), value)
+        self.assertEqual(BlogPost.objects.count(), 2)
+        self.assertEqual(BlogPost.objects.values().get(pk=self.post.pk), original_post)
+        self.assertEqual(list(self.post.starred_by.all()), [self.member])
 
     def test_add_project_modal_is_available_only_to_superuser(self):
         create_url = reverse("main:create_project_ajax")
@@ -877,9 +1359,14 @@ class AuthorizationAcceptanceTests(TestCase):
             self.assertRedirects(client.post(url), reverse("main:show_blog"))
             self.assertEqual(self.post.starred_by.filter(pk=user.pk).count(), 1)
             self.assertEqual(self.project.starred_by.count(), 0)
-            self.assertContains(client.get(reverse("main:show_blog")), "Unstar")
+            fields = client.get(reverse("main:get_blog_json")).json()[0]["fields"]
+            self.assertIs(fields["is_starred"], True)
+            self.assertEqual(fields["star_count"], 1)
             self.assertRedirects(client.post(url), reverse("main:show_blog"))
             self.assertFalse(self.post.starred_by.filter(pk=user.pk).exists())
+            fields = client.get(reverse("main:get_blog_json")).json()[0]["fields"]
+            self.assertIs(fields["is_starred"], False)
+            self.assertEqual(fields["star_count"], 0)
         self.assertEqual(self.post.starred_by.count(), 0)
 
     def test_valid_csrf_star_toggle_and_zero_count(self):
@@ -901,7 +1388,10 @@ class AuthorizationAcceptanceTests(TestCase):
         client = Client(enforce_csrf_checks=True)
         client.force_login(self.member)
         page = client.get(reverse("main:show_blog"))
-        self.assertContains(page, "0 stars")
+        self.assertEqual(page.status_code, 200)
+        fields = client.get(reverse("main:get_blog_json")).json()[0]["fields"]
+        self.assertEqual(fields["star_count"], 0)
+        self.assertIs(fields["is_starred"], False)
         token = page.cookies["csrftoken"].value
         self.assertRedirects(client.post(url, {"csrfmiddlewaretoken": token}), reverse("main:show_blog"))
         self.assertEqual(self.post.starred_by.filter(pk=self.member.pk).count(), 1)
@@ -932,7 +1422,8 @@ class AuthorizationAcceptanceTests(TestCase):
             blog_page = client.get(reverse("main:show_blog"))
             self.assertContains(project_page, 'id="project-grid"')
             self.assertNotContains(project_page, self.project.title)
-            self.assertContains(blog_page, self.post.title)
+            self.assertNotContains(blog_page, self.post.title)
+            self.assertNotIn("blog_posts", blog_page.context)
             self.assertNotContains(project_page, f"Dibintangi oleh {self.member.username}")
             self.assertNotContains(project_page, self.member.email)
             self.assertEqual("Tambah Proyek" in project_page.content.decode(), role == "owner")
@@ -942,27 +1433,72 @@ class AuthorizationAcceptanceTests(TestCase):
             self.assertEqual(project_json[0]["fields"]["star_count"], 1)
             self.assertEqual(project_json[0]["fields"]["is_starred"], role == "member")
             self.assertEqual("Tambah Blog" in blog_page.content.decode(), role == "owner")
-            self.assertEqual("Edit Blog" in blog_page.content.decode(), role in ("editor", "owner"))
-            self.assertEqual("Hapus Blog" in blog_page.content.decode(), role == "owner")
+            self.assertEqual(blog_page.context["can_edit"], role in ("editor", "owner"))
             self.assertNotContains(blog_page, f"Dibintangi oleh {self.member.username}")
             self.assertNotContains(blog_page, self.member.email)
-            self.assertContains(blog_page, "star-count")
+            self.assertNotContains(blog_page, 'action="' + reverse("main:toggle_blog_star", args=[self.post.pk]) + '"')
             if role == "anonymous":
-                self.assertNotContains(blog_page, 'action="' + reverse("main:toggle_blog_star", args=[self.post.pk]) + '"')
                 self.assertContains(blog_page, reverse("main:login"))
-            else:
-                self.assertContains(blog_page, 'action="' + reverse("main:toggle_blog_star", args=[self.post.pk]) + '"')
-                self.assertContains(blog_page, "csrfmiddlewaretoken")
             if role == "anonymous":
                 self.assertNotContains(project_page, 'action="' + reverse("main:toggle_star", args=[self.project.pk]) + '"')
                 self.assertContains(project_page, reverse("main:login"))
             else:
                 self.assertContains(project_page, f'data-star-template="{reverse("main:toggle_star", args=["00000000-0000-0000-0000-000000000000"])}"')
                 self.assertContains(project_page, 'id="project-csrf-token"')
-        for client in self.clients.values():
-            for url in (reverse("main:get_blog_json"), reverse("main:show_blog_json_by_id", args=[self.post.pk])):
-                fields = json.loads(client.get(url).content)[0]["fields"]
-                self.assertFalse(any("star" in key or "user" in key for key in fields))
+
+    def test_blog_json_star_counts_current_user_state_and_privacy(self):
+        other_post = BlogPost.objects.create(title="Unstarred blog", content="Other content")
+        self.post.starred_by.add(self.member, self.editor)
+        list_url = reverse("main:get_blog_json")
+        detail_url = reverse("main:show_blog_json_by_id", args=[self.post.pk])
+        for role, client in self.clients.items():
+            with self.subTest(role=role):
+                with CaptureQueriesContext(connection) as queries:
+                    response = client.get(list_url)
+                self.assertEqual(response.status_code, 200)
+                collection_queries = [
+                    query["sql"] for query in queries.captured_queries
+                    if BlogPost._meta.db_table.lower() in query["sql"].lower()
+                ]
+                self.assertEqual(len(collection_queries), 1)
+                if role != "anonymous":
+                    self.assertIn("EXISTS", collection_queries[0].upper())
+                records = {item["pk"]: item["fields"] for item in response.json()}
+                self.assertEqual(set(records), {self.post.pk, other_post.pk})
+                self.assertEqual(records[self.post.pk]["star_count"], 2)
+                self.assertIs(records[self.post.pk]["is_starred"], role in ("member", "editor"))
+                self.assertEqual(records[other_post.pk]["star_count"], 0)
+                self.assertIs(records[other_post.pk]["is_starred"], False)
+                for url in (list_url, detail_url):
+                    public_response = client.get(url)
+                    self.assertEqual(public_response.status_code, 200)
+                    for item in public_response.json():
+                        self.assertNotIn("starred_by", item["fields"])
+                        self.assertNotIn("starred_by_names", item["fields"])
+                    for user in (self.member, self.editor, self.owner):
+                        self.assertNotIn(user.username, public_response.content.decode())
+                        if user.email:
+                            self.assertNotIn(user.email, public_response.content.decode())
+
+    def test_blog_detail_json_keeps_serializer_contract(self):
+        self.post.starred_by.add(self.member)
+        response = self.clients["member"].get(
+            reverse("main:show_blog_json_by_id", args=[self.post.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/json")
+        data = response.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(set(data[0]), {"model", "pk", "fields"})
+        self.assertEqual(data[0]["model"], "main.blogpost")
+        self.assertEqual(data[0]["pk"], self.post.pk)
+        self.assertIs(type(data[0]["pk"]), int)
+        self.assertEqual(set(data[0]["fields"]), {
+            "title", "content", "category", "picture_link", "created_at",
+        })
+        self.assertEqual(data[0]["fields"]["title"], self.post.title)
+        self.assertEqual(data[0]["fields"]["content"], self.post.content)
 
     def test_csrf_rejects_all_mutations_without_token(self):
         for user, url, payload in (

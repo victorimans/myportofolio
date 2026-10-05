@@ -1,6 +1,6 @@
 # Blog: Assignment 5 Interactivity Specification
 
-Status: Assignment 5 target documented; current implementation does not yet meet the AJAX listing/create and XSS-sanitization requirements below. Source and this status were reconciled on 2026-10-03. This file is a specification and progress checklist, not a claim that the target behavior is implemented.
+Status: AJAX listing and case-insensitive partial-title search with 300 ms debounce are implemented. Superuser modal creation with CSRF-protected AJAX POST, JSON validation/authorization responses, shared toast feedback, and query-preserving list refresh is implemented. Server-side Blog form tag stripping and text-safe JavaScript rendering are implemented. Live browser verification remains outstanding. Source and this status were reconciled on 2026-10-04. The checklist distinguishes implemented behavior from outstanding work and browser verification.
 
 Parent plan: [Portfolio layout and implementation](../portfolio-layout-plan.md)
 
@@ -29,12 +29,13 @@ Posts are ordered newest first by `-created_at`, then `-id`. Preserve that deter
 
 | URL | Name | Current behavior | Assignment 5 target |
 | --- | --- | --- | --- |
-| `/blog/` | `main:show_blog` | Public HTML page; currently obtains post IDs through the JSON serializer/deserializer flow, annotates stars, and server-renders the records. | Render the page shell and controls, then load cards from the public JSON collection using Fetch. |
-| `/blog/add/` | `main:create_blog` | Superuser GET/POST traditional create form at `templates/blog_form.html`. | Add posts from a superuser-only modal on `/blog/`; keep this route only as a legacy route if it remains in source. |
+| `/blog/` | `main:show_blog` | Public shell-only HTML page with title search; Fetch loads cards without navigation and debounces typing for 300 ms. | Render the page shell and controls, then load cards from the public JSON collection using Fetch. |
+| `/blog/add/` | `main:create_blog` | Legacy superuser GET/POST traditional create form at `templates/blog_form.html`; the listing now uses a modal. | Retained for compatibility. |
+| `/blog/add-ajax/` | `main:create_blog_ajax` | Superuser-only POST validated with `BlogPostForm`; returns JSON `201`, `400`, or `403` and requires CSRF. | Used by the create modal on `/blog/`. |
 | `/blog/<int:id>/edit/` | `main:update_blog` | Editor/superuser GET/POST update form. | Preserve this existing Assignment 4 behavior unless separately changed by an explicit decision. |
 | `/blog/<int:id>/delete/` | `main:delete_blog` | Superuser POST-only delete. | Preserve role restriction and POST/CSRF protection. |
 | `/blog/<int:blog_id>/star/` | `main:toggle_blog_star` | Authenticated POST-only star toggle. | Preserve role restriction and ensure the AJAX JSON provides the count and current caller's own state. |
-| `/api/blog/` | `main:get_blog_json` | Public GET collection serialized by Django; currently has no title query or star fields. | Return manually constructed JSON with optional title query and star information. |
+| `/api/blog/` | `main:get_blog_json` | Public GET collection manually composed with JsonResponse; accepts a trimmed, case-insensitive partial `title` query and includes aggregate star count and caller-specific star state. | Return manually constructed JSON with optional title query and star information. |
 | `/api/blog/<int:id>/` | `main:show_blog_json_by_id` | Public GET serialized detail or 404. | No change required for Assignment 5 unless the implementation chooses to share collection serialization logic. |
 
 All complete pages extend `templates/base.html`, which provides shared assets, toast support through `static/js/toast.js`, navbar, messages, footer, and scripts. The Blog page should load any new page behavior from a dedicated static JavaScript file; do not embed untrusted post content into inline HTML.
@@ -101,33 +102,48 @@ All complete pages extend `templates/base.html`, which provides shared assets, t
 ## Existing security and rendering details to preserve
 
 - `BlogPostForm` currently has fields `title`, `content`, `category`, and `picture_link`; primary key, timestamps, and star membership are not form-writable.
-- Current server-rendered Blog content uses Django template autoescape and `linebreaks`. The AJAX version must preserve safe text behavior instead of treating plain text as HTML.
+- Blog cards use text-safe DOM construction and preserve body line breaks without treating plain text as HTML. The search input uses Django template autoescape when restoring the query.
 - Project's existing `ProjectForm` strips HTML and `static/js/projects.js` creates dynamic project card text with safe DOM APIs; Assignment 5 applies equivalent protections to Blog without changing Projects as part of this specification.
 - JSON may show an aggregate star count and the requesting user's own `is_starred` value, but must not expose identity or membership of other users.
 
 ## Implementation checklist
 
-- [ ] Change `/blog/` to render the list shell and controls, not the post collection.
-- [ ] Add/update public GET collection JSON using manually composed `JsonResponse` data.
-- [ ] Include `star_count` and per-request `is_starred` while keeping star membership private.
-- [ ] Add case-insensitive, partial-title filtering to the JSON endpoint.
-- [ ] Add Blog page JavaScript with Fetch, 300 ms debounce, request-race handling, and loading/error/retry/empty states.
-- [ ] Render title, category, date, content, image, star controls, and role-dependent edit/delete controls using text-safe DOM construction.
-- [ ] Add a superuser-only create modal on `/blog/` using `BlogPostForm`.
-- [ ] Add a POST AJAX create endpoint with `201`, `400`, and `403` JSON responses and server-side role enforcement.
-- [ ] Send CSRF token with the modal request.
-- [ ] Refresh the displayed list after successful creation without navigation.
-- [ ] Reuse shared toast helper for successful creation and authorization/validation/network errors.
-- [ ] Strip tags in `clean_title` and `clean_content`; reject an empty-after-cleaning title.
-- [ ] Preserve exact Editor update-only and superuser create/delete permissions, plus authenticated star behavior.
-- [ ] Confirm all roles, including anonymous users, can load/search public Blog data.
-- [ ] Run `python manage.py check` and the Django test suite; do not report checks as passed without actually running them.
+- [x] Change `/blog/` to render the list shell and controls, not the post collection.
+- [x] Add/update public GET collection JSON using manually composed `JsonResponse` data.
+- [x] Include `star_count` and per-request `is_starred` while keeping star membership private.
+- [x] Add case-insensitive, partial-title filtering to the JSON endpoint.
+- [x] Add Blog page JavaScript with Fetch, request-race handling, and loading/error/retry/empty states.
+- [x] Add 300 ms debounce for Blog title search.
+- [x] Render title, category, date, content, image, star controls, and role-dependent edit/delete controls using text-safe DOM construction.
+- [x] Add a superuser-only create modal on `/blog/` using `BlogPostForm`.
+- [x] Add a POST AJAX create endpoint with `201`, `400`, and `403` JSON responses and server-side role enforcement.
+- [x] Send CSRF token with the modal request.
+- [x] Refresh the displayed list after successful creation without navigation.
+- [x] Reuse shared toast helper for successful creation and authorization/validation/network errors.
+- [x] Display server validation messages with field labels in the error toast; preserve form input on failure.
+- [x] Strip tags in `clean_title` and `clean_content`; reject an empty-after-cleaning title.
+- [x] Reject content that becomes empty after tag stripping; preserve plain-text line breaks.
+- [x] Preserve exact Editor update-only and superuser create/delete permissions, plus authenticated star behavior.
+- [x] Confirm all roles, including anonymous users, can load public Blog data.
+- [x] Confirm all roles, including anonymous users, can search public Blog data.
+- [x] Run `python manage.py check` and the Django test suite; do not report checks as passed without actually running them.
 - [ ] Run the application with `python manage.py runserver` and manually verify list loading, search, modal create, toast feedback, stars, and permissions for anonymous, regular, Editor, and superuser sessions.
-- [ ] Test an XSS payload such as `<img src="x" onerror="alert('XSS!')">`; verify no executable markup or alert appears.
+- [x] Test an XSS payload such as `<img src="x" onerror="alert('XSS!')">` in server validation and mocked JavaScript DOM rendering; verify stripped input or literal text without injected markup.
+- [ ] Verify the XSS payload in a live browser; confirm no executable markup or alert appears.
 
 ## Current verification record
 
-The 2026-10-03 source review found the following current state; this is a static inspection, not a fresh runtime test:
+The 2026-10-04 XSS implementation added `strip_tags` and surrounding-whitespace cleanup in `BlogPostForm.clean_title` and `clean_content`; both reject values that become empty. AJAX creation, traditional creation, and update share this validation. Category remains choice-validated and pictures remain URL-validated. The existing JavaScript renderer already uses `textContent`, text nodes, and DOM properties instead of interpolated HTML, so no renderer change was needed. `python manage.py check` completed with two existing W042 warnings, all 80 Django tests passed, and `node --check static/js/blog.js` passed. Eight new regression tests cover stripping, empty-after-cleaning rejection, line-break preservation, unsafe URL rejection, and legacy JSON values. A temporary Node VM harness passed 233 assertions across 12 card configurations and helper tests: injected title/body/category/label payloads stayed literal, intended line breaks remained, and no unexpected images, event attributes, `innerHTML` writes, or alert calls occurred. The DOM was mocked; live-browser XSS verification remains unchecked. Earlier verification records below are historical.
+
+The 2026-10-04 toast-only review confirmed that Blog creation already calls the shared `showToast` for success and failures, including field-labeled server validation messages. No application changes were needed. A temporary Node VM harness executing read-source copies of `addBlog` and `showToast` passed 12 verification groups covering `201` success/default messages, `400` multi-field validation, `403` authorization, `500` and invalid-JSON fallback, network errors, text-safe messages, toast classes, and dismissal timers. Failure scenarios retained form input. DOM, FormData, Fetch, popovers, timers, and list refresh were mocked; this does not establish live-browser rendering. Django checks/tests were not rerun for this documentation-only update; their previous results remain recorded below. Unrelated checklist items remain unchanged.
+
+The 2026-10-04 modal/AJAX creation implementation was verified with `python manage.py check` (two existing W042 warnings), all 72 Django tests passing, `node --check static/js/blog.js`, and `git diff --check`. Added tests cover superuser-only modal visibility, ModelForm validation, JSON `201`/`400`/`403`, server-side permission revocation, POST-only behavior, CSRF enforcement, public search visibility of created records, and ignored server-managed inputs. A temporary Node VM check with mocked DOM/FormData/fetch/timers verified successful reset/close/toast and current-query refresh, duplicate-submit prevention, validation/authorization/server/network feedback with retained form state, CSRF inclusion, and submit-button recovery. This is not live-browser verification. Server-side Blog form tag stripping and manual browser/XSS checks remain outstanding. The records below describe earlier implementation stages.
+
+The 2026-10-04 checklist review reflects the implemented AJAX list shell, manually composed JSON with aggregate and caller-specific star state, safe DOM rendering, and loading/error/retry/empty states. In this session, before this documentation-only update, `python manage.py check` completed with two existing W042 warnings, all 58 Django tests passed, and `node --check static/js/blog.js` passed. These commands were not rerun for this checklist update. Search/debouncing, AJAX creation, Blog form tag stripping, and live browser verification remain outstanding. The source review below is historical.
+
+The 2026-10-04 search implementation was verified with `python manage.py check` (two existing W042 warnings), all 64 Django tests passing, and `node --check static/js/blog.js` passing. Tests cover partial/case-insensitive title matching, whitespace/empty queries, no matches, public search across all roles, star privacy, ordering, and escaped query restoration. A temporary Node VM harness using a transcription of the script and mocked DOM/timers/fetch passed 46 assertions for 300 ms debounce, cancellation, immediate submit, retry, query clearing, and history updates without navigation; this is not a live-browser check. AJAX creation, Blog form tag stripping, and live browser verification remain outstanding.
+
+The 2026-10-03 source review found the following state at that time; this is historical static inspection, not a fresh runtime test:
 
 - `/blog/` currently prepares and server-renders annotated BlogPost rows after a Django JSON serialize/deserialize round trip; it is not yet a shell-only AJAX list.
 - `/api/blog/` currently uses Django serialization, does not accept a search query, and omits star count and current-user star state.
