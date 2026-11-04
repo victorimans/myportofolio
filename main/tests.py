@@ -128,7 +128,8 @@ class MainTest(TestCase):
         self.assertContains(response, 'value="portfolio"')
         self.assertContains(response, 'id="project-search-form"')
         self.assertContains(response, 'id="project-grid"')
-        self.assertContains(response, reverse("main:get_projects_json"))
+        self.assertContains(response, reverse("api:project-list"))
+        self.assertNotContains(response, reverse("main:get_projects_json"))
 
     def test_projects_json_includes_star_count_and_current_users_star_state(self):
         project = Project.objects.create(
@@ -1172,13 +1173,17 @@ class AuthorizationAcceptanceTests(TestCase):
         response = client.post(url, {**payload, "csrfmiddlewaretoken": csrf_token})
         self.assertEqual(response.status_code, 201)
 
-    def test_project_modal_posts_ajax_and_loads_ajax_script(self):
+    def test_project_modal_uses_inline_drf_ajax_script(self):
         response = self.clients["owner"].get(reverse("main:show_projects"))
 
         self.assertContains(response, f'action="{reverse("main:create_project_ajax")}"')
         self.assertContains(response, 'id="project-form"')
-        self.assertContains(response, 'src="/static/js/projects.js"')
-        self.assertContains(response, f'data-create-url="{reverse("main:create_project_ajax")}"')
+        self.assertNotContains(response, 'src="/static/js/projects.js"')
+        self.assertContains(response, f'const BASE_PROJECTS_ENDPOINT = "{reverse("api:project-list")}";')
+        self.assertContains(response, 'JSON.stringify(payload)')
+        self.assertContains(response, 'action === "star" ? "POST" : "DELETE"')
+        self.assertNotContains(response, 'item.fields')
+        self.assertNotContains(response, 'item.pk')
 
     def test_anonymous_actions_redirect_even_for_unsupported_methods(self):
         actions = (
@@ -1442,9 +1447,9 @@ class AuthorizationAcceptanceTests(TestCase):
             if role == "anonymous":
                 self.assertNotContains(project_page, 'action="' + reverse("main:toggle_star", args=[self.project.pk]) + '"')
                 self.assertContains(project_page, reverse("main:login"))
-            else:
-                self.assertContains(project_page, f'data-star-template="{reverse("main:toggle_star", args=["00000000-0000-0000-0000-000000000000"])}"')
-                self.assertContains(project_page, 'id="project-csrf-token"')
+            self.assertContains(project_page, f'const STAR_PROJECT_ENDPOINT = "{reverse("api:project-star", args=["00000000-0000-0000-0000-000000000000"])}";')
+            self.assertContains(project_page, 'name="csrfmiddlewaretoken"')
+            self.assertIn("csrftoken", project_page.cookies)
 
     def test_blog_json_star_counts_current_user_state_and_privacy(self):
         other_post = BlogPost.objects.create(title="Unstarred blog", content="Other content")
