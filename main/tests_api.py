@@ -41,20 +41,58 @@ class BlogPostAPITest(APITestCase):
         response = self.client.post(self.list_url, self.payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(BlogPost.objects.filter(pk=response.data["id"]).exists())
+        persisted_posts = list(BlogPost.objects.values_list("pk", "title", "content", "category"))
         for changes in ({"title": "  "}, {"content": "<b></b>"}, {"category": "unknown"}):
             response = self.client.post(self.list_url, {**self.payload, **changes}, format="json")
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertEqual(
+                list(BlogPost.objects.values_list("pk", "title", "content", "category")),
+                persisted_posts,
+            )
 
-    def test_editor_can_put_and_patch_but_cannot_create_or_delete(self):
+    def test_guest_and_regular_user_cannot_write_and_database_stays_unchanged(self):
+        original_posts = list(BlogPost.objects.values_list("pk", "title", "content", "category"))
+        for user in (None, self.member):
+            with self.subTest(user=user):
+                self.client.force_authenticate(user=user)
+                responses = (
+                    self.client.post(self.list_url, self.payload, format="json"),
+                    self.client.patch(self.detail_url, {"title": "Denied"}, format="json"),
+                    self.client.put(self.detail_url, self.payload, format="json"),
+                    self.client.delete(self.detail_url),
+                )
+                self.assertEqual([response.status_code for response in responses], [403, 403, 403, 403])
+                self.assertEqual(
+                    list(BlogPost.objects.values_list("pk", "title", "content", "category")),
+                    original_posts,
+                )
+
+    def test_editor_can_patch_but_cannot_create_or_delete(self):
         self.client.force_authenticate(user=self.editor)
         response = self.client.patch(self.detail_url, {"title": "Edited title"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.post.refresh_from_db()
+        self.assertEqual(self.post.title, "Edited title")
         self.assertEqual(self.post.content, "Existing content")
-        response = self.client.put(self.detail_url, self.payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        original_posts = list(BlogPost.objects.values_list("pk", "title", "content", "category"))
         self.assertEqual(self.client.post(self.list_url, self.payload, format="json").status_code, 403)
         self.assertEqual(self.client.delete(self.detail_url).status_code, 403)
+        self.assertEqual(
+            list(BlogPost.objects.values_list("pk", "title", "content", "category")),
+            original_posts,
+        )
+
+    def test_owner_can_create_and_delete_blog_posts(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post(self.list_url, self.payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created_id = response.data["id"]
+        self.assertTrue(BlogPost.objects.filter(pk=created_id, title="New blog").exists())
+
+        response = self.client.delete(reverse("api:blogpost-detail", args=[created_id]))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(BlogPost.objects.filter(pk=created_id).exists())
 
     def test_owner_can_update_and_delete_while_other_users_are_forbidden(self):
         self.client.force_authenticate(user=self.member)
@@ -77,7 +115,7 @@ class BlogPostAPITest(APITestCase):
 
     def test_browser_session_writes_require_and_accept_csrf_header(self):
         client = APIClient(enforce_csrf_checks=True)
-        client.force_login(self.owner)
+        self.assertTrue(client.login(username="blog-owner", password="test-password"))
         token_response = client.get(reverse("main:show_blog"))
         self.assertEqual(token_response.status_code, 200)
         token = client.cookies["csrftoken"].value
