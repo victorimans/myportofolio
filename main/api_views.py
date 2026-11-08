@@ -7,9 +7,9 @@ from rest_framework.decorators import (
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from main.models import Project
+from main.models import Project, BlogPost
 from main.permissions import IsPortfolioOwnerOrEditorOrReadOnly
-from main.serializers import ProjectSerializer
+from main.serializers import ProjectSerializer, BlogPostSerializer
 
 
 @api_view(["GET", "HEAD", "POST"])
@@ -64,4 +64,65 @@ def project_detail(request, project_id):
     )
     serializer.is_valid(raise_exception=True)
     serializer.save()
+    return Response(serializer.data)
+
+
+
+@api_view(["GET", "HEAD", "POST"])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsPortfolioOwnerOrEditorOrReadOnly])
+def blogpost_list(request):
+    if request.method in ("GET", "HEAD"):
+        blogs = BlogPost.objects.prefetch_related("starred_by").order_by("title", "id")
+        title = request.query_params.get("title", "").strip()
+        if title:
+            blogs = blogs.filter(title__icontains=title)
+        serializer = BlogPostSerializer(
+            blogs, many=True, context={"request": request},
+        )
+        return Response(serializer.data)
+
+    serializer = BlogPostSerializer(data=request.data, context={"request": request})
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET", "HEAD", "PUT", "PATCH", "DELETE"])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsPortfolioOwnerOrEditorOrReadOnly])
+def blogpost_detail(request, blogpost_id):
+    blogpost = get_object_or_404(
+        BlogPost.objects.prefetch_related("starred_by"), pk=blogpost_id,
+    )
+
+    if request.method in ("GET", "HEAD"):
+        serializer = BlogPostSerializer(blogpost, context={"request": request})
+        return Response(serializer.data)
+
+    if request.method == "DELETE":
+        blogpost.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    serializer = BlogPostSerializer(
+        blogpost,
+        data=request.data,
+        partial=request.method == "PATCH",
+        context={"request": request},
+    )
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsAuthenticated])
+def blogpost_star(request, blogpost_id):
+    blogpost = get_object_or_404(BlogPost, pk=blogpost_id)
+    if blogpost.starred_by.filter(pk=request.user.pk).exists():
+        blogpost.starred_by.remove(request.user)
+    else:
+        blogpost.starred_by.add(request.user)
+    serializer = BlogPostSerializer(blogpost, context={"request": request})
     return Response(serializer.data)
