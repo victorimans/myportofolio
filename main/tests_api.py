@@ -5,7 +5,87 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from main.models import Project
+from main.models import BlogPost, Project
+
+
+class BlogPostAPITest(APITestCase):
+    def setUp(self):
+        self.owner = User.objects.create_superuser(
+            username="blog-owner", password="test-password", email="owner@example.com",
+        )
+        self.member = User.objects.create_user(username="blog-member", password="test-password")
+        self.editor = User.objects.create_user(username="blog-editor", password="test-password")
+        self.editor.groups.add(Group.objects.create(name="Editor"))
+        self.post = BlogPost.objects.create(
+            title="Existing blog", content="Existing content", category="ai",
+        )
+        self.list_url = reverse("api:blogpost-list")
+        self.detail_url = reverse("api:blogpost-detail", args=[self.post.pk])
+        self.star_url = reverse("api:blogpost-star", args=[self.post.pk])
+        self.payload = {
+            "title": "New blog", "content": "A useful post", "category": "career",
+            "picture_link": "https://example.com/blog.png",
+        }
+
+    def test_public_list_and_detail_and_title_search(self):
+        response = self.client.get(self.list_url, {"title": "EXIST"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], self.post.pk)
+        self.assertNotIn("starred_by", response.data[0])
+        self.assertEqual(self.client.get(self.detail_url).status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get(self.list_url, {"title": "missing"}).data, [])
+
+    def test_owner_can_create_and_validation_errors_are_returned(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post(self.list_url, self.payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(BlogPost.objects.filter(pk=response.data["id"]).exists())
+        for changes in ({"title": "  "}, {"content": "<b></b>"}, {"category": "unknown"}):
+            response = self.client.post(self.list_url, {**self.payload, **changes}, format="json")
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_editor_can_put_and_patch_but_cannot_create_or_delete(self):
+        self.client.force_authenticate(user=self.editor)
+        response = self.client.patch(self.detail_url, {"title": "Edited title"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.post.refresh_from_db()
+        self.assertEqual(self.post.content, "Existing content")
+        response = self.client.put(self.detail_url, self.payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.post(self.list_url, self.payload, format="json").status_code, 403)
+        self.assertEqual(self.client.delete(self.detail_url).status_code, 403)
+
+    def test_owner_can_update_and_delete_while_other_users_are_forbidden(self):
+        self.client.force_authenticate(user=self.member)
+        self.assertEqual(self.client.patch(self.detail_url, {"title": "Denied"}, format="json").status_code, 403)
+        self.assertEqual(self.client.delete(self.detail_url).status_code, 403)
+        self.client.force_authenticate(user=self.owner)
+        self.assertEqual(self.client.put(self.detail_url, self.payload, format="json").status_code, 200)
+        self.assertEqual(self.client.delete(self.detail_url).status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(BlogPost.objects.filter(pk=self.post.pk).exists())
+
+    def test_authenticated_user_can_toggle_star(self):
+        self.assertEqual(self.client.post(self.star_url).status_code, 403)
+        self.client.force_authenticate(user=self.member)
+        response = self.client.post(self.star_url)
+        self.assertTrue(response.data["is_starred"])
+        self.assertEqual(response.data["star_count"], 1)
+        response = self.client.post(self.star_url)
+        self.assertFalse(response.data["is_starred"])
+        self.assertEqual(response.data["star_count"], 0)
+
+    def test_browser_session_writes_require_and_accept_csrf_header(self):
+        client = APIClient(enforce_csrf_checks=True)
+        client.force_login(self.owner)
+        token_response = client.get(reverse("main:show_blog"))
+        self.assertEqual(token_response.status_code, 200)
+        token = client.cookies["csrftoken"].value
+        self.assertEqual(client.post(self.list_url, self.payload, format="json").status_code, 403)
+        response = client.post(
+            self.list_url, self.payload, format="json", HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
 
 class ProjectAPITest(APITestCase):

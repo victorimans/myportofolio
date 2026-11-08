@@ -683,7 +683,7 @@ class AuthorizationAcceptanceTests(TestCase):
                 self.assertContains(response, 'name="title"')
                 self.assertContains(response, 'type="search"')
                 self.assertContains(response, 'id="blog-list"')
-                self.assertContains(response, f'data-json-url="{reverse("main:get_blog_json")}"')
+                self.assertContains(response, f'data-json-url="{reverse("api:blogpost-list")}"')
                 self.assertContains(response, 'src="/static/js/blog.js"')
                 self.assertNotIn("blog_posts", response.context)
                 self.assertNotContains(response, self.post.title)
@@ -701,16 +701,16 @@ class AuthorizationAcceptanceTests(TestCase):
                 self.assertContains(response, self.project.title)
                 self.assertNotContains(response, 'popovertarget="add-project-modal"')
 
-    def test_add_blog_modal_is_available_only_to_superuser(self):
-        create_url = reverse("main:create_blog_ajax")
-        self.assertEqual(create_url, "/blog/add-ajax/")
+    def test_blog_modal_is_available_to_owner_and_editor_for_api_create_and_update(self):
+        api_list = reverse("api:blogpost-list")
         for role, client in self.clients.items():
             with self.subTest(role=role):
                 response = client.get(reverse("main:show_blog"))
                 self.assertEqual(response.status_code, 200)
-                if role == "owner":
-                    self.assertContains(response, 'popovertarget="add-blog-modal"')
-                    self.assertContains(response, 'id="add-blog-modal"')
+                if role in ("owner", "editor"):
+                    if role == "owner":
+                        self.assertContains(response, 'popovertarget="blog-form-modal"')
+                    self.assertContains(response, 'id="blog-form-modal"')
                     self.assertContains(response, 'id="blog-form"')
                     form_match = re.search(
                         r'<form\b(?=[^>]*\bid="blog-form")[^>]*>.*?</form>',
@@ -719,16 +719,14 @@ class AuthorizationAcceptanceTests(TestCase):
                     )
                     self.assertIsNotNone(form_match)
                     form_html = form_match.group()
-                    self.assertIn(f'action="{create_url}"', form_html)
-                    self.assertRegex(form_html, r'method="(?i:post)"')
+                    self.assertIn(f'action="{api_list}"', form_html)
                     self.assertIn('name="csrfmiddlewaretoken"', form_html)
                     for field_name in BlogPostForm().fields:
                         self.assertIn(f'name="{field_name}"', form_html)
                     for field_name in ("id", "pk", "created_at", "starred_by"):
                         self.assertNotIn(f'name="{field_name}"', form_html)
                 else:
-                    self.assertNotContains(response, 'id="add-blog-modal"')
-                    self.assertNotContains(response, 'popovertarget="add-blog-modal"')
+                    self.assertNotContains(response, 'id="blog-form-modal"')
                     self.assertNotContains(response, 'id="blog-form"')
                     self.assertNotContains(response, "Tambah Blog")
 
@@ -951,7 +949,7 @@ class AuthorizationAcceptanceTests(TestCase):
     def test_blog_ajax_create_rechecks_revoked_superuser_permission(self):
         self.assertContains(
             self.clients["owner"].get(reverse("main:show_blog")),
-            'id="add-blog-modal"',
+            'id="blog-form-modal"',
         )
         self.owner.groups.add(self.editor_group)
         get_user_model().objects.filter(pk=self.owner.pk).update(is_superuser=False)
@@ -965,8 +963,9 @@ class AuthorizationAcceptanceTests(TestCase):
         self.assertIn("message", response.json())
         self.assertEqual(list(BlogPost.objects.values()), original_posts)
         page = self.clients["owner"].get(reverse("main:show_blog"))
-        self.assertNotContains(page, 'id="add-blog-modal"')
-        self.assertNotContains(page, 'popovertarget="add-blog-modal"')
+        self.assertContains(page, 'id="blog-form-modal"')
+        self.assertContains(page, "Edit Blog")
+        self.assertNotContains(page, 'class="button" popovertarget="blog-form-modal"')
 
     def test_blog_ajax_create_is_post_only(self):
         url = reverse("main:create_blog_ajax")
