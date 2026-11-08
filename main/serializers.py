@@ -1,7 +1,7 @@
 from django.utils.html import strip_tags
 from rest_framework import serializers
 
-from main.models import Project
+from main.models import Project, BlogPost
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -44,12 +44,12 @@ class ProjectSerializer(serializers.ModelSerializer):
 
 
 
-class BlogSerializer(serializers.ModelSerializer):
+class BlogPostSerializer(serializers.ModelSerializer):
     star_count = serializers.SerializerMethodField()
     is_starred = serializers.SerializerMethodField()
 
     class Meta:
-        model = Project
+        model = BlogPost
         fields = [ "id", "title", "content", "category", "picture_link",
                    "created_at", "star_count", "is_starred",]
         read_only_fields = ["id", "created_at", "star_count", "is_starred",]
