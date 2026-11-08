@@ -214,3 +214,42 @@ Ekspor sesi OpenCode disertakan di repository:
 2. `await` menunggu Promise dari `fetch()` selesai sebelum kode melanjutkan ke langkah berikutnya, misalnya membaca JSON dari response. Tanpa `await`, `fetch()` langsung menghasilkan Promise sehingga kode berikutnya dapat berjalan sebelum response tersedia; penanganannya perlu menggunakan `.then()` atau mekanisme async lain.
 
 3. XSS (Cross-Site Scripting) adalah serangan ketika input berisi skrip atau markup berbahaya ditampilkan dan dijalankan di browser pengguna. Data AJAX/JavaScript lebih rentan jika dimasukkan ke halaman sebagai HTML, misalnya melalui `innerHTML`, karena browser dapat menafsirkan markup tersebut. Template Django secara default melakukan autoescape pada nilai yang ditampilkan, sehingga karakter HTML berbahaya ditampilkan sebagai teks. Saat merender data AJAX, gunakan `textContent` atau DOM API yang aman dan jangan menganggap data dari server selalu tepercaya.
+
+
+## AI Disclosure Tugas 6
+
+Pada Tugas 6, saya menggunakan OpenCode sebagai alat bantu untuk menyusun dan meninjau jawaban berdasarkan pertanyaan tugas serta implementasi Django REST Framework pada repository. Saya memeriksa serializer, endpoint, permission class, dan tes API agar contoh tentang `PUT`/`PATCH`, hak akses, dan CSRF sesuai dengan kode proyek. AI dapat membantu merangkum konsep, tetapi tidak menjadi sumber kebenaran final; saya tetap bertanggung jawab atas pemahaman dan jawaban yang disampaikan.
+
+Pemeriksaan untuk jawaban ini dilakukan dengan membaca kode sumber dan tes yang relevan. Saya tidak mengubah kode aplikasi maupun menjalankan tes sebagai bagian dari pengerjaan dokumentasi ini. Percakapan ini tidak memiliki URL share publik atau ekspor sesi yang disertakan.
+
+Ekspor sesi OpenCode disertakan di repository:
+
+- [Sesi implementasi Blog Tugas 6](<docs\AI Disclosure\Tugas 6\session-34e868b5-09bb-4a09-9c1d-734f1500ed4a.md>)
+
+# Tugas 6
+## Pertanyaan :
+1. Jelaskan apa yang dimaksud dengan REST dan mengapa mengembalikan JSON saja belum cukup untuk menyebut sebuah API sebagai RESTful! Jelaskan pula perbedaan PUT dan PATCH beserta contoh kapan masing-masing sebaiknya digunakan!
+
+2. Jelaskan peran serializer pada Django REST Framework! Apa keuntungannya dibandingkan merakit dictionary secara manual dengan JsonResponse seperti pada Tutorial 05?
+
+3. Jelaskan perbedaan autentikasi dan otorisasi pada Django REST Framework! Mengapa hak akses harus diperiksa dengan permission class di server, bukan hanya dengan menyembunyikan tombol di template?
+
+4. Jelaskan mengapa permintaan yang mengubah data tetap memerlukan token CSRF ketika API memakai SessionAuthentication! Mengapa test yang memakai force_authenticate tidak cukup untuk membuktikan bahwa perlindungan CSRF berjalan?
+
+## Jawaban :
+
+1. REST (Representational State Transfer) adalah gaya arsitektur untuk membangun layanan jaringan dengan prinsip seperti pemisahan client dan server, komunikasi stateless, penggunaan cache bila sesuai, serta antarmuka seragam untuk mengakses resource. JSON hanyalah salah satu format representasi data. API yang mengembalikan JSON belum tentu RESTful jika, misalnya, tidak memodelkan resource dengan jelas, mengabaikan semantik metode dan status HTTP, atau bergantung pada state sesi di server tanpa mengikuti prinsip stateless (Intinya tidak mengikuti gaya arsitektur REST maka tidak RESTful). Jadi, format response saja tidak menentukan apakah API mengikuti REST.
+
+`PUT` digunakan untuk mengganti representasi resource secara keseluruhan, client umumnya mengirim semua field yang diperlukan. `PATCH` digunakan untuk mengubah sebagian field tanpa mengirim ulang seluruh resource. Contohnya, untuk mengubah judul proyek saja, client dapat mengirim `PATCH /api/v1/projects/<id>/` dengan `{"title": "Judul baru"}`. `PUT` pada endpoint detail yang sama lebih sesuai ketika client mengirim seluruh data proyek yang akan menggantikan data sebelumnya. Di API proyek ini, `PATCH` diproses sebagai partial update, sedangkan `PUT` memvalidasi data sebagai update penuh. `PUT` yang tidak menyertakan field wajib dapat ditolak dengan status `400`.
+
+2. Serializer Django REST Framework (DRF) mengubah data model atau objek Python menjadi data primitif yang dapat dirender sebagai JSON, dan melakukan proses sebaliknya saat menerima input. Serializer juga memvalidasi input sebelum data disimpan. `ProjectSerializer` dan `BlogPostSerializer` pada proyek ini menentukan field yang boleh ditampilkan/diterima, field read-only seperti ID, validasi judul dan konten, serta nilai turunan seperti jumlah star.
+
+Dibandingkan menyusun dictionary secara manual lalu mengembalikannya dengan `JsonResponse` seperti pada endpoint JSON lama, serializer mengurangi pengulangan dan risiko lupa menyertakan atau memvalidasi field. Aturan representasi dan validasi dapat dipusatkan serta digunakan kembali, dan DRF dapat memberikan respons error validasi yang konsisten. Serializer tidak menggantikan kebutuhan untuk merancang field dan validasi dengan benar; pengembang tetap harus menentukan data apa yang aman dan sesuai untuk diekspos.
+
+3. Autentikasi memeriksa identitas peminta—misalnya, apakah request membawa sesi login yang valid. Otorisasi memeriksa tindakan apa yang boleh dilakukan oleh identitas tersebut terhadap resource tertentu. Pada API ini, `SessionAuthentication` menggunakan sesi Django untuk autentikasi, sedangkan permission class menentukan hak akses. Akses baca pada daftar/detail Project dan Blog bersifat publik. Superuser dapat mengelola data, dan anggota grup `Editor` dapat memperbarui data yang sudah ada. Endpoint star mensyaratkan pengguna sudah terautentikasi.
+
+Hak akses harus diperiksa di server pada setiap request karena pengguna dapat memanggil endpoint API secara langsung atau mengubah request tanpa menggunakan antarmuka halaman. Menyembunyikan tombol hanya mengubah tampilan; hal itu tidak mencegah request langsung untuk membuat, memperbarui, atau menghapus data. Permission class menjadi batas keamanan yang benar-benar menolak tindakan yang tidak diizinkan, terlepas dari tampilan yang digunakan client.
+
+4. `SessionAuthentication` memakai cookie sesi untuk mengenali pengguna. Browser dapat mengirim cookie itu secara otomatis ketika mengirim request ke situs, termasuk ketika request dipicu oleh situs lain. Karena itu, request yang mengubah data—seperti `POST`, `PUT`, `PATCH`, atau `DELETE` memerlukan token CSRF yang valid agar server dapat memeriksa bahwa request berasal dari konteks aplikasi yang dipercaya, bukan sekadar memanfaatkan sesi login korban. Request aman seperti `GET` tidak mengubah data dan tidak memerlukan perlindungan CSRF dengan cara yang sama.
+
+`force_authenticate` memasangkan pengguna langsung pada request untuk memudahkan pengujian autentikasi/otorisasi; cara ini melewati alur autentikasi sesi normal sehingga tidak membuktikan bahwa pemeriksaan CSRF terhadap cookie dan token berjalan. Untuk menguji CSRF, tes harus menjalankan alur session login dengan pemeriksaan CSRF diaktifkan, lalu mengirim request perubahan tanpa token dan memastikan ditolak, serta mengirimnya dengan token dan memastikan dapat diproses. Tes API pada proyek ini menggunakan `APIClient(enforce_csrf_checks=True)` untuk memeriksa kedua kondisi tersebut.
