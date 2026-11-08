@@ -10,7 +10,7 @@
 
                 {% if user.is_superuser %}
                     <p class="blog-page-actions">
-                        <button type="button" class="button" popovertarget="add-blog-modal">Tambah Blog</button>
+                        <button type="button" class="button" popovertarget="blog-form-modal">Tambah Blog</button>
                     </p>
                 {% endif %}
 
@@ -36,27 +36,26 @@
                 {{ user.is_superuser|json_script:"blog-is-superuser" }}
                 {{ user.is_authenticated|json_script:"blog-is-authenticated" }}
                 <div id="blog-endpoints" hidden
-                     data-json-url="{% url 'main:get_blog_json' %}"
-                     data-update-template="{% url 'main:update_blog' 0 %}"
-                     data-delete-template="{% url 'main:delete_blog' 0 %}"
-                     data-star-template="{% url 'main:toggle_blog_star' 0 %}"
+                     data-json-url="{% url 'api:blogpost-list' %}"
+                     data-detail-template="{% url 'api:blogpost-detail' 0 %}"
+                     data-star-template="{% url 'api:blogpost-star' 0 %}"
                      data-login-url="{% url 'main:login' %}">
                     {% csrf_token %}
                 </div>
             </div>
         </section>
-        {% if user.is_superuser %}
-            <div id="add-blog-modal" class="project-form-modal" popover="auto"
-                 role="dialog" aria-modal="true" aria-labelledby="add-blog-modal-title">
+        {% if can_edit %}
+            <div id="blog-form-modal" class="project-form-modal" popover="auto"
+                 role="dialog" aria-modal="true" aria-labelledby="blog-form-modal-title">
                 <button type="button" class="project-form-modal__backdrop"
-                        popovertarget="add-blog-modal" popovertargetaction="hide"
-                        aria-label="Tutup form tambah blog"></button>
+                        popovertarget="blog-form-modal" popovertargetaction="hide"
+                        aria-label="Tutup form blog"></button>
                 <div class="project-form-modal__content">
                     <button type="button" class="project-form-modal__close"
-                            popovertarget="add-blog-modal" popovertargetaction="hide"
-                            aria-label="Tutup form tambah blog">x</button>
-                    <h2 id="add-blog-modal-title">Tambah Blog Baru</h2>
-                    <form id="blog-form" method="post" action="{% url 'main:create_blog_ajax' %}" class="project-form">
+                            popovertarget="blog-form-modal" popovertargetaction="hide"
+                            aria-label="Tutup form blog">x</button>
+                    <h2 id="blog-form-modal-title">{% if user.is_superuser %}Tambah Blog Baru{% else %}Edit Blog{% endif %}</h2>
+                    <form id="blog-form" method="post" action="{% url 'api:blogpost-list' %}" class="project-form">
                         {% csrf_token %}
                         {% for field in form %}
                             <div class="form-group">
@@ -66,8 +65,8 @@
                         {% endfor %}
                         <div class="project-form-modal__actions">
                             <button type="button" class="button button-secondary"
-                                    popovertarget="add-blog-modal" popovertargetaction="hide">Batal</button>
-                            <button type="submit" class="button">Tambah Blog</button>
+                                    popovertarget="blog-form-modal" popovertargetaction="hide">Batal</button>
+                            <button type="submit" class="button">Simpan Blog</button>
                         </div>
                     </form>
                 </div>

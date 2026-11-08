@@ -371,7 +371,7 @@ def show_blog(request):
         "name": "Victoriano Iman Santosa",
         "title_query": request.GET.get("title", "").strip(),
         "can_edit": can_edit(request.user),
-        "form": BlogPostForm() if request.user.is_superuser else None,
+        "form": BlogPostForm() if can_edit(request.user) else None,
     }
     return render(request, "blog.html", context)
 
