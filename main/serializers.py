@@ -41,3 +41,36 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def get_starred_by_names(self, obj):
         return ", ".join(user.username for user in obj.starred_by.all())
+
+
+
+class BlogSerializer(serializers.ModelSerializer):
+    star_count = serializers.SerializerMethodField()
+    is_starred = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Project
+        fields = [ "id", "title", "content", "category", "picture_link",
+                   "created_at", "star_count", "is_starred",]
+        read_only_fields = ["id", "created_at", "star_count", "is_starred",]
+
+    def validate_title(self, value):
+        value = strip_tags(value).strip()
+        if not value:
+            raise serializers.ValidationError("Judul Blog tidak boleh kosong.")
+        return value
+
+    def validate_content(self, value):
+        value = strip_tags(value).strip()
+        if not value:
+            raise serializers.ValidationError("Isi Blog tidak boleh kosong.")
+        return value
+
+    def get_star_count(self, obj):
+            return obj.starred_by.count()
+    
+    def get_is_starred(self, obj):
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return False
+        return obj.starred_by.filter(pk=request.user.pk).exists()
